@@ -1,0 +1,8 @@
+.build/
+.swiftpm/
+dist/
+ContainerMenuBar.app/
+DerivedData/
+*.xcuserdata/
+*.xcuserstate
+.DS_Store
