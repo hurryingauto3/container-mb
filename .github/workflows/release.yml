@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, package & publish
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the build number (commit count) is correct
+
+      - name: Verify tag matches AppVersion
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          SRC="$(sed -n 's/.*marketing = "\([0-9][0-9.]*\)".*/\1/p' Sources/ContainerCore/AppVersion.swift | head -1)"
+          echo "tag=$TAG source=$SRC"
+          if [ "$TAG" != "$SRC" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match AppVersion.marketing ($SRC)"
+            exit 1
+          fi
+
+      - name: Build & package
+        run: make package
+
+      - name: Zip app bundle
+        run: ditto -c -k --keepParent dist/ContainerMenuBar.app dist/ContainerMenuBar.app.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ContainerMenuBar.app.zip
+          generate_release_notes: true
+          body: |
+            Download `ContainerMenuBar.app.zip`, unzip, and move it to /Applications.
+
+            This build is ad-hoc signed and not notarized — see SECURITY.md for
+            how to verify it and what Gatekeeper will show.

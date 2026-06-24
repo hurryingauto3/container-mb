@@ -1,0 +1,10 @@
+ContainerMenuBar
+Copyright 2026 Ali Hamza
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This is an independent, unofficial project. It is not affiliated with,
+endorsed by, or sponsored by Apple Inc. "Apple" and "Apple container" are
+trademarks of Apple Inc. ContainerMenuBar observes the Apple `container`
+command-line tool (https://github.com/apple/container, Apache-2.0) as an
+external process and does not bundle or link its source.

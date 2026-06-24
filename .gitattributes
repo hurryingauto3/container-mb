@@ -1,0 +1,12 @@
+# Normalize line endings.
+* text=auto eol=lf
+
+# Treat images as binary.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.icns binary
+
+# Language stats: keep docs/screenshots from skewing GitHub's language bar.
+docs/** linguist-documentation
+*.md linguist-documentation

@@ -1,0 +1,35 @@
+# SwiftLint configuration — https://github.com/realm/swiftlint
+included:
+  - Sources
+excluded:
+  - .build
+  - dist
+
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+identifier_name:
+  min_length: 2          # allow short names like `id`, `os`
+  excluded: [id, os, db, x, y]
+
+type_name:
+  max_length:
+    warning: 50
+
+function_body_length:
+  warning: 80
+
+# Opt-in rules that raise the quality bar without being noisy.
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - first_where
+  - sorted_first_last
+  - toggle_bool
+  - unneeded_parentheses_in_closure_argument
+
+disabled_rules:
+  - todo                 # tracked separately; don't fail builds on TODOs

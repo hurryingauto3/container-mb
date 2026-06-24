@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+name: Bug report
+description: Report a problem with ContainerMenuBar
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug! Please do not report security issues here —
+        see SECURITY.md.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: ContainerMenuBar version
+      description: Shown in the window header (e.g. v1.0.0).
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: e.g. 14.5 (Apple silicon)
+    validations:
+      required: true
+  - type: input
+    id: container-version
+    attributes:
+      label: Apple container CLI version
+      description: Output of `container --version`.
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Any errors shown in the app or console.
+      render: shell
