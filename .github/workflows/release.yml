@@ -76,7 +76,7 @@ jobs:
           xcrun stapler validate "$DMG"
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*.dmg
           generate_release_notes: true
