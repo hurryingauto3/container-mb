@@ -15,7 +15,7 @@ jobs:
     name: Build & test
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Swift version
         run: swift --version
       - name: Build
@@ -27,7 +27,7 @@ jobs:
     name: SwiftLint
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install SwiftLint
         run: brew install swiftlint
       - name: Lint
