@@ -48,19 +48,35 @@ running `container` yourself). Keep those directories and your `PATH` trusted.
 
 ## Installing safely
 
-Release builds are currently **ad-hoc signed and not notarized**. macOS
-Gatekeeper will warn the first time you open a downloaded copy. To install:
+Releases are distributed as a `.dmg`. When a build is **Developer ID-signed and
+notarized**, it opens with a normal double-click. If a build is only **ad-hoc
+signed** (no notarization), macOS Gatekeeper warns on first launch — right-click
+the app → **Open** → **Open**.
 
-1. Prefer building from source (`make install`) if you want full provenance.
-2. If using a release asset, verify the signature after unzipping:
+To verify a download:
 
-   ```sh
-   codesign --verify --strict --verbose=2 ContainerMenuBar.app
-   spctl --assess --type execute --verbose ContainerMenuBar.app   # will note it is unnotarized
-   ```
+```sh
+# Inside the mounted DMG, or after copying to /Applications:
+codesign --verify --strict --verbose=2 /Applications/ContainerMenuBar.app
+spctl --assess --type execute --verbose /Applications/ContainerMenuBar.app
+```
 
-3. Only download release assets from the official
-   [Releases page](https://github.com/hurryingauto3/container-mb/releases).
+Only download release assets from the official
+[Releases page](https://github.com/hurryingauto3/container-mb/releases). Building
+from source (`make install`) gives you full provenance.
 
-Notarized, Developer ID-signed builds are planned; the packaging script already
-supports a real identity via `SIGN_IDENTITY` for maintainers who can notarize.
+### Enabling notarized release builds (maintainers)
+
+The release workflow produces a Developer ID-signed, notarized, stapled DMG when
+these repository secrets are set (otherwise it falls back to an ad-hoc DMG):
+
+| Secret | Purpose |
+| ------ | ------- |
+| `MACOS_CERTIFICATE_BASE64` | base64 of the Developer ID Application certificate (`.p12`) |
+| `MACOS_CERTIFICATE_PASSWORD` | password for that `.p12` |
+| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)` |
+| `APPLE_ID` | Apple ID used for notarization |
+| `APPLE_APP_PASSWORD` | app-specific password for that Apple ID |
+| `APPLE_TEAM_ID` | your Apple Developer Team ID |
+
+All of these require a paid Apple Developer account.

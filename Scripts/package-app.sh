@@ -43,9 +43,18 @@ echo "Packaging $APP_NAME $MARKETING_VERSION (build $BUILD_NUMBER, $CONFIGURATIO
 
 swift build -c "$CONFIGURATION" --product "$APP_NAME"
 
+RESOURCES_DIR="$CONTENTS_DIR/Resources"
 rm -rf "$APP_DIR"
-mkdir -p "$MACOS_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp ".build/$CONFIGURATION/$APP_NAME" "$MACOS_DIR/$APP_NAME"
+
+# App icon (generate on demand if missing).
+ICON_SRC="$ROOT_DIR/Resources/AppIcon.icns"
+if [[ ! -f "$ICON_SRC" ]]; then
+  echo "Generating app icon..."
+  swift "$ROOT_DIR/Scripts/generate-icon.swift" "$ICON_SRC" >/dev/null
+fi
+cp "$ICON_SRC" "$RESOURCES_DIR/AppIcon.icns"
 
 cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -54,6 +63,10 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <dict>
   <key>CFBundleExecutable</key>
   <string>$APP_NAME</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundleIconName</key>
+  <string>AppIcon</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
   <key>CFBundleName</key>

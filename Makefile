@@ -1,4 +1,4 @@
-.PHONY: build test run package install clean
+.PHONY: build test run package dmg install clean
 
 build:
 	swift build
@@ -11,6 +11,9 @@ run:
 
 package:
 	Scripts/package-app.sh
+
+dmg:
+	Scripts/make-dmg.sh
 
 install: package
 	rm -rf "/Applications/ContainerMenuBar.app"
