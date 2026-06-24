@@ -57,6 +57,7 @@ struct ContainerDetailView: View {
                         commandSection(container)
                         resourceSection(container)
                         listSection(title: "Networks", values: container.networks)
+                        listSection(title: "IP Addresses", values: container.ipAddresses)
                         listSection(title: "Mounts", values: container.mounts)
                         labelsSection(container)
                     }

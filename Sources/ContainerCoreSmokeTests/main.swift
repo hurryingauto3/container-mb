@@ -16,6 +16,12 @@ enum SmokeTests {
         await suite.run("parses system status table") {
             try testParsesSystemStatusTable()
         }
+        await suite.run("parses live container address shape") {
+            try testParsesLiveContainerAddressShape()
+        }
+        await suite.run("parses live network and volume detail") {
+            try testParsesLiveResourceDetail()
+        }
         await suite.run("background refresh skips unchanged stats") {
             try await testBackgroundRefreshSkipsStatsWhenUnchanged()
         }
@@ -170,6 +176,102 @@ private func testParsesSystemStatusTable() throws {
     try expect(state.installed, "system should be installed")
     try expect(state.serviceRunning, "system should be running")
     try expect(state.version == "container CLI version 1.0.0", "version mismatch")
+}
+
+// Regression: the live `container list` JSON puts addresses under status.networks[].ipv4Address
+// in CIDR form, which the mapper previously ignored (it only matched ipAddress/address/ip).
+private func testParsesLiveContainerAddressShape() throws {
+    let data = Data(
+        """
+        [
+          {
+            "configuration": {
+              "id": "web",
+              "image": { "reference": "docker.io/library/nginx:alpine" },
+              "publishedPorts": [
+                { "containerPort": 80, "count": 1, "hostAddress": "0.0.0.0", "hostPort": 8080, "proto": "tcp" }
+              ],
+              "networks": [{ "network": "default", "options": { "hostname": "web", "mtu": 1280 } }]
+            },
+            "id": "web",
+            "status": {
+              "networks": [
+                {
+                  "hostname": "web",
+                  "ipv4Address": "192.168.64.2/24",
+                  "ipv4Gateway": "192.168.64.1",
+                  "ipv6Address": "fd37:5540:3aa9:5b60:f442:99ff:fe4e:7281/64",
+                  "macAddress": "f6:42:99:4e:72:81",
+                  "network": "default"
+                }
+              ],
+              "startedDate": "2026-06-24T01:58:23Z",
+              "state": "running"
+            }
+          }
+        ]
+        """.utf8
+    )
+
+    let containers = try ContainerJSONMapper.containers(from: data)
+
+    try expect(containers.count == 1, "expected one container")
+    try expect(containers[0].image == "docker.io/library/nginx:alpine", "image mismatch")
+    try expect(containers[0].ports.first?.mappingDisplay == "localhost:8080 -> 80/tcp", "port mismatch")
+    try expect(
+        containers[0].ipAddresses == [
+            "192.168.64.2",
+            "fd37:5540:3aa9:5b60:f442:99ff:fe4e:7281",
+        ],
+        "ip mismatch: \(containers[0].ipAddresses)"
+    )
+}
+
+// Regression: live `network list` reports the subnet under status.ipv4Subnet, and `volume list`
+// reports source/driver under configuration; the mapper previously only read top-level keys.
+private func testParsesLiveResourceDetail() throws {
+    let networkData = Data(
+        """
+        [
+          {
+            "configuration": { "mode": "nat", "name": "default", "plugin": "container-network-vmnet" },
+            "id": "default",
+            "status": { "ipv4Gateway": "192.168.64.1", "ipv4Subnet": "192.168.64.0/24" }
+          }
+        ]
+        """.utf8
+    )
+
+    let networks = try ContainerJSONMapper.resources(from: networkData)
+    try expect(networks.count == 1, "expected one network")
+    try expect(networks[0].id == "default", "network id mismatch")
+    try expect(networks[0].name == "default", "network name mismatch")
+    try expect(networks[0].detail == "192.168.64.0/24", "network detail mismatch: \(networks[0].detail ?? "nil")")
+
+    let volumeData = Data(
+        """
+        [
+          {
+            "configuration": {
+              "driver": "local",
+              "format": "ext4",
+              "name": "testvol",
+              "source": "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img"
+            },
+            "id": "testvol"
+          }
+        ]
+        """.utf8
+    )
+
+    let volumes = try ContainerJSONMapper.resources(from: volumeData)
+    try expect(volumes.count == 1, "expected one volume")
+    try expect(volumes[0].id == "testvol", "volume id mismatch")
+    try expect(volumes[0].name == "testvol", "volume name mismatch")
+    try expect(
+        volumes[0].detail == "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img",
+        "volume detail mismatch: \(volumes[0].detail ?? "nil")"
+    )
 }
 
 private func testBackgroundRefreshSkipsStatsWhenUnchanged() async throws {

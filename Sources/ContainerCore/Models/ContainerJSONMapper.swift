@@ -34,10 +34,7 @@ public enum ContainerJSONMapper {
             let name = object["name"]?.stringValue
                 ?? item.value(at: ["configuration", "name"])?.stringValue
                 ?? id
-            let detail = object["subnet"]?.stringValue
-                ?? object["path"]?.stringValue
-                ?? object["driver"]?.stringValue
-            return ResourceSummary(id: id, name: name, detail: detail)
+            return ResourceSummary(id: id, name: name, detail: resourceDetail(from: item, object: object))
         }
     }
 
@@ -221,9 +218,24 @@ public enum ContainerJSONMapper {
         return Array(NSOrderedSet(array: names)) as? [String] ?? names
     }
 
+    // Networks expose the subnet under status; volumes expose source/driver under configuration.
+    private static func resourceDetail(from item: JSONValue, object: [String: JSONValue]) -> String? {
+        let candidates: [JSONValue?] = [
+            object["subnet"],
+            item.value(at: ["status", "ipv4Subnet"]),
+            object["path"],
+            item.value(at: ["configuration", "source"]),
+            object["driver"],
+            item.value(at: ["configuration", "driver"]),
+        ]
+        return candidates.lazy.compactMap { $0?.stringValue }.first
+    }
+
     private static func ipAddresses(from value: JSONValue) -> [String] {
-        let candidates = ["ipAddress", "address", "ip"]
+        let candidates = ["ipAddress", "ipv4Address", "ipv6Address", "address", "ip"]
             .flatMap { key in value.deepValues(named: key).compactMap(\.stringValue) }
+            // The CLI reports addresses in CIDR form (e.g. "192.168.64.2/24"); drop the prefix length.
+            .map { String($0.prefix(while: { $0 != "/" })) }
             .filter { candidate in
                 candidate.contains(".") || candidate.contains(":")
             }
