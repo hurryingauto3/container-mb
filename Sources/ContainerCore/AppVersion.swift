@@ -11,7 +11,7 @@ import Foundation
 public enum AppVersion {
     /// Marketing (semantic) version, e.g. `1.0.0`. Keep `Scripts/package-app.sh`'s parser in mind
     /// when changing the formatting of this declaration — it greps for the string literal.
-    public static let marketing = "1.0.0"
+    public static let marketing = "1.1.0"
 
     /// User-facing version string, prefixed with `v` (e.g. `v1.0.0`).
     public static var current: String { "v\(marketing)" }

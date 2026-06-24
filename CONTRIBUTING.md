@@ -67,5 +67,5 @@ issue — follow [SECURITY.md](SECURITY.md).
 1. Bump `marketing` in `Sources/ContainerCore/AppVersion.swift`.
 2. Move the `Unreleased` CHANGELOG entries under a new version heading with the date.
 3. Commit, then tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
-4. The release workflow builds, packages, and attaches `ContainerMenuBar.app.zip`
-   to a new GitHub Release.
+4. The release workflow builds, signs/notarizes (when secrets are set), and
+   attaches `ContainerMenuBar-X.Y.Z.dmg` to a new GitHub Release.

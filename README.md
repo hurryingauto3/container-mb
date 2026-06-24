@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/icon.png" alt="ContainerMenuBar icon" width="128" height="128">
+</p>
+
 # ContainerMenuBar
 
 [![CI](https://github.com/hurryingauto3/container-mb/actions/workflows/ci.yml/badge.svg)](https://github.com/hurryingauto3/container-mb/actions/workflows/ci.yml)
@@ -44,31 +48,18 @@ IPs, and more — without ever mutating runtime state.
 
 ## Install
 
-### Quick install (one line)
+### Download the DMG (recommended)
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/hurryingauto3/container-mb/main/Scripts/install.sh | bash
-```
-
-This downloads the latest release, installs it to `/Applications`, clears the
-Gatekeeper quarantine flag, and launches it. (Prefer to read before you run?
-The script is [`Scripts/install.sh`](Scripts/install.sh).)
-
-### Download a release manually
-
-1. Download `ContainerMenuBar.app.zip` from the
+1. Download `ContainerMenuBar-<version>.dmg` from the
    [latest release](https://github.com/hurryingauto3/container-mb/releases/latest).
-2. Unzip and move `ContainerMenuBar.app` to `/Applications`.
-3. Because the build is ad-hoc signed (not yet notarized), the first launch is
-   blocked by Gatekeeper. Either **right-click the app → Open → Open**, or run:
-
-   ```sh
-   xattr -dr com.apple.quarantine /Applications/ContainerMenuBar.app
-   open /Applications/ContainerMenuBar.app
-   ```
+2. Open the DMG and **drag ContainerMenuBar into Applications**.
+3. Launch it from Applications or Spotlight.
 
 The running version is shown in the window header and in *Finder → Get Info*.
-See [SECURITY.md](SECURITY.md#installing-safely) for how to verify a download.
+
+> **Gatekeeper:** notarized releases open with a double-click. If a build is not
+> yet notarized, the first launch shows a warning — **right-click the app →
+> Open → Open**. See [SECURITY.md](SECURITY.md#installing-safely).
 
 ### Build and install from source
 
@@ -76,13 +67,14 @@ See [SECURITY.md](SECURITY.md#installing-safely) for how to verify a download.
 git clone https://github.com/hurryingauto3/container-mb.git
 cd container-mb
 make install      # builds a release bundle and copies it to /Applications
+make dmg          # or build a distributable dist/ContainerMenuBar-<version>.dmg
 ```
 
 ## Quick start
 
 1. Install `container` and start it: `container system start`
    (see [apple/container](https://github.com/apple/container)).
-2. Install ContainerMenuBar with the one-liner above.
+2. Install ContainerMenuBar from the DMG (above).
 3. Click the box icon (`ctr N`) in the menu bar to open the dashboard, then use
    the segmented control to switch between **Containers**, **Volumes**, and
    **Networks**. It refreshes automatically; the refresh button forces an update.
@@ -94,6 +86,7 @@ make build        # swift build
 make test         # run the smoke-test suite
 make run          # build and launch the app
 make package      # build a signed dist/ContainerMenuBar.app
+make dmg          # build a distributable dist/ContainerMenuBar-<version>.dmg
 make install      # package and copy to /Applications
 make clean
 ```

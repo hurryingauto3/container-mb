@@ -7,11 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-24
+
 ### Added
 
-- One-line installer (`Scripts/install.sh`) that downloads the latest release,
-  installs to `/Applications`, clears the Gatekeeper quarantine flag, and
-  launches the app; documented as the recommended install path.
+- App icon: a material-style isometric 3D box, generated reproducibly by
+  `Scripts/generate-icon.swift` and bundled into the app.
+- DMG installer (`make dmg` / `Scripts/make-dmg.sh`) with a drag-to-Applications
+  layout and volume icon; this is now the primary download.
+- Release workflow signs with Developer ID and notarizes + staples the DMG when
+  the relevant repository secrets are present (ad-hoc otherwise).
+
+### Changed
+
+- Releases now ship a `.dmg` instead of a `.app.zip`.
+
+### Removed
+
+- The `curl | bash` one-line installer (`Scripts/install.sh`), in favor of the
+  DMG.
 
 ## [1.0.0] - 2026-06-24
 
@@ -46,5 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded the recursion depth of JSON traversal to guard against pathological or
   hostile CLI output.
 
-[Unreleased]: https://github.com/hurryingauto3/container-mb/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/hurryingauto3/container-mb/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/hurryingauto3/container-mb/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/hurryingauto3/container-mb/releases/tag/v1.0.0
