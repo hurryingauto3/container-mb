@@ -1,0 +1,649 @@
+
+<title>ContainerMenuBar — Feature Roadmap</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ground: #F3F5F9;
+  --surface: #FFFFFF;
+  --border: #CDD2DC;
+  --border-sub: #E2E6EF;
+
+  --text:   #0D1117;
+  --text-2: #57606A;
+  --text-3: #8C959F;
+
+  --t1: #0969DA;
+  --t2: #6E40C9;
+  --t3: #C93535;
+  --tu: #0D7340;
+
+  --t1-bg: #EBF3FF;  --t1-fg: #0550AE;
+  --t2-bg: #F0EBFF;  --t2-fg: #4C2D9A;
+  --t3-bg: #FFF0F0;  --t3-fg: #A02020;
+  --tu-bg: #E6F5EC;  --tu-fg: #0D5C32;
+
+  --amber-bg: #FFF8C5;  --amber-fg: #6A3D00;
+  --gray-bg:  #EEF0F4;  --gray-fg:  #44505E;
+
+  --font-ui:   -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SF Mono', 'Fira Mono', Menlo, monospace;
+}
+
+html { font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--text); background: var(--ground); }
+body { padding: 48px 24px 96px; max-width: 980px; margin: 0 auto; }
+
+/* ── Header ── */
+.doc-header { padding-bottom: 28px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--t1); margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 24px; font-weight: 700; line-height: 1.25;
+  text-wrap: balance; margin-bottom: 10px;
+}
+
+.subtitle { font-size: 14px; color: var(--text-2); max-width: 580px; margin-bottom: 20px; }
+
+.coverage { display: flex; flex-direction: column; gap: 5px; }
+.coverage-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.coverage-track { height: 5px; background: var(--border-sub); border-radius: 3px; max-width: 400px; }
+.coverage-fill { height: 100%; width: 17.5%; background: var(--t1); border-radius: 3px; }
+.coverage-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+
+/* ── Summary strip ── */
+.summary-strip {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 6px; overflow: hidden;
+  margin-bottom: 44px;
+}
+.summary-item { padding: 16px 20px; border-right: 1px solid var(--border); }
+.summary-item:last-child { border-right: none; }
+.summary-n {
+  font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums;
+  line-height: 1; margin-bottom: 5px;
+}
+.s1 .summary-n { color: var(--t1); }
+.s2 .summary-n { color: var(--t2); }
+.s3 .summary-n { color: var(--t3); }
+.su .summary-n { color: var(--tu); }
+.summary-desc { font-size: 12px; color: var(--text-2); line-height: 1.45; }
+
+/* ── Tier section ── */
+.tier { margin-bottom: 44px; }
+
+.tier-header {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  padding: 10px 0; border-bottom: 2px solid var(--border-sub);
+  margin-bottom: 8px;
+  position: sticky; top: 0; z-index: 10;
+  background: var(--ground);
+}
+.t1 .tier-header { border-bottom-color: var(--t1); }
+.t2 .tier-header { border-bottom-color: var(--t2); }
+.t3 .tier-header { border-bottom-color: var(--t3); }
+.tu .tier-header { border-bottom-color: var(--tu); }
+
+.tier-badge {
+  font-family: var(--font-mono);
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .09em;
+  padding: 3px 8px; border-radius: 3px;
+}
+.t1 .tier-badge { background: var(--t1-bg); color: var(--t1-fg); }
+.t2 .tier-badge { background: var(--t2-bg); color: var(--t2-fg); }
+.t3 .tier-badge { background: var(--t3-bg); color: var(--t3-fg); }
+.tu .tier-badge { background: var(--tu-bg); color: var(--tu-fg); }
+
+.tier-title { font-size: 15px; font-weight: 600; }
+.tier-note { font-size: 12px; color: var(--text-3); margin-left: auto; }
+
+/* ── Feature rows ── */
+.feature {
+  background: var(--surface);
+  border: 1px solid var(--border-sub);
+  border-left: 4px solid;
+  border-radius: 0 4px 4px 0;
+  display: grid; grid-template-columns: 260px 1fr;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.t1 .feature { border-left-color: var(--t1); }
+.t2 .feature { border-left-color: var(--t2); }
+.t3 .feature { border-left-color: var(--t3); }
+.tu .feature { border-left-color: var(--tu); }
+
+.feat-left {
+  padding: 16px 18px;
+  border-right: 1px solid var(--border-sub);
+  background: rgba(255,255,255,.5);
+}
+.feat-name { font-size: 14px; font-weight: 600; margin-bottom: 10px; line-height: 1.3; }
+.feat-cmds { display: flex; flex-direction: column; gap: 4px; }
+.cmd {
+  font-family: var(--font-mono); font-size: 11px;
+  padding: 2px 7px; border-radius: 3px;
+  display: inline-block; width: fit-content; max-width: 100%;
+  overflow-x: auto; white-space: nowrap;
+}
+.t1 .cmd { background: var(--t1-bg); color: var(--t1-fg); }
+.t2 .cmd { background: var(--t2-bg); color: var(--t2-fg); }
+.t3 .cmd { background: var(--t3-bg); color: var(--t3-fg); }
+.tu .cmd { background: var(--tu-bg); color: var(--tu-fg); }
+
+.feat-right {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+}
+.feat-points { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.feat-points li {
+  font-size: 13px; color: var(--text-2);
+  padding-left: 16px; position: relative; line-height: 1.55;
+}
+.feat-points li::before { content: "–"; position: absolute; left: 0; color: var(--text-3); }
+.feat-points code {
+  font-family: var(--font-mono); font-size: 11px;
+  background: var(--gray-bg); color: var(--gray-fg);
+  padding: 1px 5px; border-radius: 3px;
+}
+
+.feat-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.tag {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .06em;
+  padding: 2px 6px; border-radius: 3px;
+}
+.tag-low    { background: var(--tu-bg);    color: var(--tu-fg); }
+.tag-med    { background: var(--amber-bg); color: var(--amber-fg); }
+.tag-high   { background: var(--t3-bg);   color: var(--t3-fg); }
+.tag-newtab { background: var(--t1-bg);   color: var(--t1-fg); }
+.tag-panel  { background: var(--gray-bg);  color: var(--gray-fg); }
+.tag-widget { background: var(--gray-bg);  color: var(--gray-fg); }
+.tag-break  { background: var(--t3-bg);   color: var(--t3-fg); }
+.tag-ux     { background: var(--tu-bg);   color: var(--tu-fg); }
+
+/* Design decision callout */
+.callout {
+  background: #FFFBEE;
+  border: 1px solid #E8C700;
+  border-left: 4px solid #E8C700;
+  border-radius: 0 4px 4px 0;
+  padding: 12px 16px;
+  font-size: 13px; color: #5A3E00; line-height: 1.6;
+  margin-bottom: 8px;
+}
+.callout strong { font-weight: 600; }
+
+/* Footer */
+.doc-footer {
+  margin-top: 56px; padding-top: 18px;
+  border-top: 1px solid var(--border-sub);
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; color: var(--text-3);
+}
+
+/* Responsive */
+@media (max-width: 680px) {
+  .feature { grid-template-columns: 1fr; }
+  .feat-left { border-right: none; border-bottom: 1px solid var(--border-sub); }
+  .summary-strip { grid-template-columns: repeat(2, 1fr); }
+  .summary-item:nth-child(2) { border-right: none; }
+  .summary-item:nth-child(3) { border-top: 1px solid var(--border); }
+  .tier-note { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+
+<header class="doc-header">
+  <div class="eyebrow">ContainerMenuBar · Feature Gap Analysis · June 2026</div>
+  <h1>18 features identified against the Apple container&nbsp;v1.0 CLI</h1>
+  <p class="subtitle">The app currently calls 7 of ~40 available subcommands. This analysis covers what to build next, grouped by risk and return.</p>
+  <div class="coverage">
+    <div class="coverage-label">Current CLI surface</div>
+    <div class="coverage-track"><div class="coverage-fill"></div></div>
+    <div class="coverage-note">list · stats · inspect · network list · volume list · system status · --version</div>
+  </div>
+</header>
+
+<div class="summary-strip">
+  <div class="summary-item s1">
+    <div class="summary-n">5</div>
+    <div class="summary-desc">Read-only additions<br>high value, low risk</div>
+  </div>
+  <div class="summary-item s2">
+    <div class="summary-n">5</div>
+    <div class="summary-desc">System visibility<br>still read-only</div>
+  </div>
+  <div class="summary-item s3">
+    <div class="summary-n">4</div>
+    <div class="summary-desc">Action features<br>breaks read-only model</div>
+  </div>
+  <div class="summary-item su">
+    <div class="summary-n">4</div>
+    <div class="summary-desc">UX improvements<br>no new CLI calls</div>
+  </div>
+</div>
+
+
+<!-- ────────────────────────── TIER 1 ────────────────────────── -->
+<section class="tier t1">
+  <div class="tier-header">
+    <span class="tier-badge">Tier 1</span>
+    <span class="tier-title">Read-Only Additions</span>
+    <span class="tier-note">No design-philosophy change · stays fully non-mutating</span>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Images Tab</div>
+      <div class="feat-cmds">
+        <span class="cmd">image list --format json</span>
+        <span class="cmd">image inspect &lt;name&gt;</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Fourth segment in the existing Containers / Volumes / Networks control — no new navigation pattern required.</li>
+        <li>List row: image name + tag, compressed size on disk, short digest (12 chars), platform (os/arch), age since creation.</li>
+        <li>Detail panel on select (lazy <code>image inspect</code>): full digest, exposed ports from config, entrypoint, env vars, layer count. Same master-detail layout already built for containers.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-newtab">New tab</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Container Logs Viewer</div>
+      <div class="feat-cmds">
+        <span class="cmd">logs &lt;id&gt; -n 200</span>
+        <span class="cmd">logs &lt;id&gt; --boot</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Collapsible "Logs" section below the stats grid in the container detail panel, fetched on demand when expanded.</li>
+        <li>Monospaced, selectable, horizontally scrollable output — last 200 lines. Copy-all button in the section header.</li>
+        <li><code>--boot</code> toggle switches to VM-level init output, surfacing kernel and vminit messages. Critical for diagnosing startup failures that produce no container-level logs.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-med">Medium effort</span>
+        <span class="tag tag-panel">Panel extension</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Disk Usage Widget</div>
+      <div class="feat-cmds">
+        <span class="cmd">system df --format json</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>An additional row in the header summary strip, polled at background frequency (no stats-level cost).</li>
+        <li>Shows images, containers, and volumes disk usage as human-readable sizes — the most useful number to expose without opening a shell.</li>
+        <li>Optional: small proportional bars per type so relative weight reads at a glance.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-widget">Header widget</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Volume Detail Inspect</div>
+      <div class="feat-cmds">
+        <span class="cmd">volume inspect &lt;name&gt;</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Current volume panel shows driver, format, size, and source from the list response. <code>volume inspect</code> adds the full mount path, driver options, and labels.</li>
+        <li>Fetch lazily on volume selection — same pattern as container <code>inspect</code> in <code>PollingCoordinator</code>. No polling overhead.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-panel">Panel extension</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Network Detail Inspect</div>
+      <div class="feat-cmds">
+        <span class="cmd">network inspect &lt;name&gt;</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Current network panel shows mode, subnet, gateway, plugin. <code>network inspect</code> adds the set of attached container IDs and interface-level options.</li>
+        <li>Attached container list can act as a cross-tab deep-link: clicking a container ID in the network panel selects it in the Containers tab.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-panel">Panel extension</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ────────────────────────── TIER 2 ────────────────────────── -->
+<section class="tier t2">
+  <div class="tier-header">
+    <span class="tier-badge">Tier 2</span>
+    <span class="tier-title">System Visibility</span>
+    <span class="tier-note">Still read-only · exposes system-layer state not currently surfaced</span>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Per-Component Version Map</div>
+      <div class="feat-cmds">
+        <span class="cmd">system version --format json</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Replaces the current flat <code>--version</code> string with a structured breakdown: CLI, runtime, kernel, and vminit component versions.</li>
+        <li>Surfaced in the system status header area — useful for bug reports and confirming upgrade state.</li>
+        <li><code>system version</code> is more reliable than top-level <code>--version</code> as an API — it returns JSON with named fields rather than a single parseable string.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-widget">Header widget</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Builder Status Indicator</div>
+      <div class="feat-cmds">
+        <span class="cmd">builder status --format json</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>A status chip in the header row alongside the existing service-running indicator. Shows whether the build daemon is active — relevant for teams using <code>container build</code> alongside the runtime.</li>
+        <li>Polled at background frequency. Two states: running (with resource config) and stopped. No new UI patterns.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-widget">Header widget</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Registry Status</div>
+      <div class="feat-cmds">
+        <span class="cmd">registry list</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>A panel or section in the system info area listing authenticated registries — hostname and auth status.</li>
+        <li>Immediately useful when debugging image pull failures: confirms whether a credential is present before checking network or image reference issues.</li>
+        <li>Low-frequency poll (background only); very cheap call.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-panel">New panel</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Machine Management Tab</div>
+      <div class="feat-cmds">
+        <span class="cmd">machine list --format json</span>
+        <span class="cmd">machine inspect [&lt;id&gt;]</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Persistent Linux VMs (introduced in v1.0) are a distinct resource type from ephemeral containers — they warrant their own tab, not a section within Containers.</li>
+        <li>List row: VM name, state, CPU and memory config, OS, default flag. Detail panel: full resource config, home mount mode, kernel in use.</li>
+        <li>Medium effort because <code>ContainerJSONMapper</code> needs a new mapping path for the machine shape, and the concept of a "default machine" needs a UI affordance.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-med">Medium effort</span>
+        <span class="tag tag-newtab">New tab</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">System DNS Mappings</div>
+      <div class="feat-cmds">
+        <span class="cmd">system dns list</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Custom hostname → IP mappings configured via <code>container system dns create</code>. Not visible anywhere in the current UI.</li>
+        <li>Surface as a section within the Networks tab (below the network list) or in the system info panel. Shows domain and resolved address.</li>
+        <li>Useful context when a container is publishing on a custom local domain — clarifies why <code>container.local</code> resolves but an ad-hoc domain doesn't.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-panel">Panel extension</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ────────────────────────── TIER 3 ────────────────────────── -->
+<section class="tier t3">
+  <div class="tier-header">
+    <span class="tier-badge">Tier 3</span>
+    <span class="tier-title">Action Features</span>
+    <span class="tier-note">Requires a deliberate product decision before any of these ship</span>
+  </div>
+
+  <div class="callout">
+    <strong>Design decision required.</strong> The app's read-only constraint is a documented philosophy, not an implementation accident — it's in the README, the CLAUDE.md, and the code comments. Adding any action feature ends that guarantee and changes what the app <em>is</em>. The choice isn't "should we add stop?" — it's "are we building a control plane or a monitor?" Settle that first, then the four features below follow naturally.
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Container Lifecycle Controls</div>
+      <div class="feat-cmds">
+        <span class="cmd">stop &lt;id&gt;</span>
+        <span class="cmd">start &lt;id&gt;</span>
+        <span class="cmd">kill &lt;id&gt;</span>
+        <span class="cmd">delete &lt;id&gt;</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Stop, restart, kill, and remove buttons in the container detail panel — contextual to state (only "Start" shown for stopped containers, etc.).</li>
+        <li>Requires: confirmation sheet for destructive operations (kill, delete), post-action forced refresh, error propagation to UI rather than silent failure.</li>
+        <li>The most-requested class of feature for a container monitor. Also the one with the highest blast radius if something goes wrong.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-high">High effort</span>
+        <span class="tag tag-break">Action</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Batch Prune Sheet</div>
+      <div class="feat-cmds">
+        <span class="cmd">prune</span>
+        <span class="cmd">image prune</span>
+        <span class="cmd">volume prune</span>
+        <span class="cmd">network prune</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>A "Clean up" sheet accessible from the summary bar. Shows how much space would be reclaimed per resource type (dry-run first), then a confirm button to execute.</li>
+        <li>Lower stakes than lifecycle controls — prune only removes stopped/unused resources — but still irreversible, so dry-run preview is essential.</li>
+        <li>The disk usage widget from Tier 1 pairs naturally with this: the number motivates the action.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-med">Medium effort</span>
+        <span class="tag tag-break">Action</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Live Log Streaming</div>
+      <div class="feat-cmds">
+        <span class="cmd">logs &lt;id&gt; --follow</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Real-time log tail in the container detail panel — extends the static Logs Viewer from Tier 1.</li>
+        <li>Requires managing a long-running subprocess that doesn't fit the current request-response <code>ProcessRunner</code> model. Needs: line buffering, max-line cap with auto-scroll, pause/resume, and clean teardown when the container is deselected.</li>
+        <li>Highest engineering effort of any feature on this list. Correct approach: a separate <code>LogStreamingService</code> actor with its own lifecycle, not a patch on <code>ProcessRunner</code>.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-high">High effort</span>
+        <span class="tag tag-break">Action</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Image Pull &amp; Registry Login</div>
+      <div class="feat-cmds">
+        <span class="cmd">image pull &lt;ref&gt;</span>
+        <span class="cmd">registry login &lt;server&gt;</span>
+        <span class="cmd">registry logout &lt;registry&gt;</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Pull-by-reference sheet from the Images tab; progress output streamed via the same infrastructure as log streaming.</li>
+        <li>Registry login requires a credential entry form — password must go to Keychain, not be passed on the command line. <code>--password-stdin</code> via stdin pipe is the correct approach.</li>
+        <li>Scope creep risk: this is the first step toward being a full container UI, which may not be the goal.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-high">High effort</span>
+        <span class="tag tag-break">Action</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ────────────────────────── UX ────────────────────────── -->
+<section class="tier tu">
+  <div class="tier-header">
+    <span class="tier-badge">UX Improvements</span>
+    <span class="tier-title">No New CLI Calls</span>
+    <span class="tier-note">Client-side or OS API only · quick wins with high perceived polish</span>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Container Age &amp; Uptime</div>
+      <div class="feat-cmds">
+        <span class="cmd">createdAt / startedAt</span>
+        <span class="cmd">(already parsed)</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li><code>createdAt</code> and <code>startedAt</code> are already mapped in <code>ContainerSummary</code> but not displayed in the list row or detail panel.</li>
+        <li>Show "up 3h" for running containers and "stopped 2d ago" for exited ones directly in the list row, replacing or augmenting the current state badge. Formatted relative to <code>PollingCoordinator</code>'s last snapshot time.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-ux">UX only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Search &amp; Filter</div>
+      <div class="feat-cmds">
+        <span class="cmd">(client-side)</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>A search field at the top of each list panel filtering by name, image, or state — live filtering against the in-memory snapshot, no additional CLI calls.</li>
+        <li>State filter buttons (Running / Stopped / All) as a secondary control below the search field.</li>
+        <li>Especially valuable for the Images tab where a large image store is hard to navigate without filter.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-ux">UX only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">Sort Controls</div>
+      <div class="feat-cmds">
+        <span class="cmd">(client-side)</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Column-header taps to sort the container list by CPU %, memory, name, state, or age. Default: state (running first), then name.</li>
+        <li>Sort state persists across polls — the list doesn't jump on refresh, it re-sorts the new snapshot with the current key.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-low">Low effort</span>
+        <span class="tag tag-ux">UX only</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature">
+    <div class="feat-left">
+      <div class="feat-name">State-Change Notifications</div>
+      <div class="feat-cmds">
+        <span class="cmd">UNUserNotificationCenter</span>
+      </div>
+    </div>
+    <div class="feat-right">
+      <ul class="feat-points">
+        <li>Notify when a previously-running container transitions to stopped/exited unexpectedly — detected by comparing successive snapshots in <code>PollingCoordinator</code>.</li>
+        <li>Also: service goes down (currently surfaced only as a stale indicator), and optionally when a new container appears.</li>
+        <li>Notification permission is gated; notifications should be opt-in via a Preferences pane or first-launch prompt rather than requested immediately at launch.</li>
+      </ul>
+      <div class="feat-tags">
+        <span class="tag tag-med">Medium effort</span>
+        <span class="tag tag-ux">UX only</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer class="doc-footer">
+  <span>container-ui · main · generated June 2026</span>
+  <span>apple/container v1.0 · ~40 subcommands total</span>
+</footer>
