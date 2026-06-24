@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- One-line installer (`Scripts/install.sh`) that downloads the latest release,
+  installs to `/Applications`, clears the Gatekeeper quarantine flag, and
+  launches the app; documented as the recommended install path.
+
 ## [1.0.0] - 2026-06-24
 
 ### Added

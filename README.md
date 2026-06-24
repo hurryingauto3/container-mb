@@ -44,17 +44,31 @@ IPs, and more — without ever mutating runtime state.
 
 ## Install
 
-### Download a release (recommended)
+### Quick install (one line)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/hurryingauto3/container-mb/main/Scripts/install.sh | bash
+```
+
+This downloads the latest release, installs it to `/Applications`, clears the
+Gatekeeper quarantine flag, and launches it. (Prefer to read before you run?
+The script is [`Scripts/install.sh`](Scripts/install.sh).)
+
+### Download a release manually
 
 1. Download `ContainerMenuBar.app.zip` from the
    [latest release](https://github.com/hurryingauto3/container-mb/releases/latest).
 2. Unzip and move `ContainerMenuBar.app` to `/Applications`.
-3. Launch it. The version you are running is shown in the window header and in
-   *Finder → Get Info*.
+3. Because the build is ad-hoc signed (not yet notarized), the first launch is
+   blocked by Gatekeeper. Either **right-click the app → Open → Open**, or run:
 
-> Release builds are ad-hoc signed, not yet notarized. See
-> [SECURITY.md](SECURITY.md#installing-safely) for how to verify a download and
-> what Gatekeeper will show.
+   ```sh
+   xattr -dr com.apple.quarantine /Applications/ContainerMenuBar.app
+   open /Applications/ContainerMenuBar.app
+   ```
+
+The running version is shown in the window header and in *Finder → Get Info*.
+See [SECURITY.md](SECURITY.md#installing-safely) for how to verify a download.
 
 ### Build and install from source
 
@@ -63,6 +77,15 @@ git clone https://github.com/hurryingauto3/container-mb.git
 cd container-mb
 make install      # builds a release bundle and copies it to /Applications
 ```
+
+## Quick start
+
+1. Install `container` and start it: `container system start`
+   (see [apple/container](https://github.com/apple/container)).
+2. Install ContainerMenuBar with the one-liner above.
+3. Click the box icon (`ctr N`) in the menu bar to open the dashboard, then use
+   the segmented control to switch between **Containers**, **Volumes**, and
+   **Networks**. It refreshes automatically; the refresh button forces an update.
 
 ## Usage
 
