@@ -1,0 +1,4 @@
+# Default owner for everything in the repo. Owners are automatically requested
+# for review on pull requests. See:
+# https://docs.github.com/articles/about-code-owners
+* @hurryingauto3
