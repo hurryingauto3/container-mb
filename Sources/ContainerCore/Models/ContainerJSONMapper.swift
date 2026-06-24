@@ -34,7 +34,12 @@ public enum ContainerJSONMapper {
             let name = object["name"]?.stringValue
                 ?? item.value(at: ["configuration", "name"])?.stringValue
                 ?? id
-            return ResourceSummary(id: id, name: name, detail: resourceDetail(from: item, object: object))
+            return ResourceSummary(
+                id: id,
+                name: name,
+                detail: resourceDetail(from: item, object: object),
+                attributes: resourceAttributes(from: item)
+            )
         }
     }
 
@@ -219,6 +224,39 @@ public enum ContainerJSONMapper {
     }
 
     // Networks expose the subnet under status; volumes expose source/driver under configuration.
+    // Extracts the human-readable fields shown for volumes and networks. The same `resources`
+    // endpoint shape backs both, so we probe the union of known keys and keep whatever is present:
+    // volumes carry driver/format/size/source, networks carry mode/subnet/gateway/plugin.
+    private static func resourceAttributes(from item: JSONValue) -> [ResourceAttribute] {
+        var attributes: [ResourceAttribute] = []
+
+        func add(_ label: String, paths: [[String]], transform: (JSONValue) -> String? = { $0.stringValue }) {
+            for path in paths {
+                guard let value = item.value(at: path), let formatted = transform(value), !formatted.isEmpty else {
+                    continue
+                }
+                attributes.append(ResourceAttribute(label: label, value: formatted))
+                return
+            }
+        }
+
+        // Volume fields.
+        add("Driver", paths: [["driver"], ["configuration", "driver"]])
+        add("Format", paths: [["format"], ["configuration", "format"]])
+        add("Size", paths: [["sizeInBytes"], ["configuration", "sizeInBytes"]]) { value in
+            value.uint64Value.map(DisplayFormatters.bytes)
+        }
+        add("Source", paths: [["source"], ["configuration", "source"], ["path"]])
+
+        // Network fields.
+        add("Mode", paths: [["mode"], ["configuration", "mode"]])
+        add("Subnet", paths: [["subnet"], ["status", "ipv4Subnet"], ["configuration", "subnet"]])
+        add("Gateway", paths: [["gateway"], ["status", "ipv4Gateway"]])
+        add("Plugin", paths: [["plugin"], ["configuration", "plugin"]])
+
+        return attributes
+    }
+
     private static func resourceDetail(from item: JSONValue, object: [String: JSONValue]) -> String? {
         let candidates: [JSONValue?] = [
             object["subnet"],

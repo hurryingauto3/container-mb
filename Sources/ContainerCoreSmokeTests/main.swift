@@ -247,6 +247,15 @@ private func testParsesLiveResourceDetail() throws {
     try expect(networks[0].id == "default", "network id mismatch")
     try expect(networks[0].name == "default", "network name mismatch")
     try expect(networks[0].detail == "192.168.64.0/24", "network detail mismatch: \(networks[0].detail ?? "nil")")
+    try expect(
+        networks[0].attributes == [
+            ResourceAttribute(label: "Mode", value: "nat"),
+            ResourceAttribute(label: "Subnet", value: "192.168.64.0/24"),
+            ResourceAttribute(label: "Gateway", value: "192.168.64.1"),
+            ResourceAttribute(label: "Plugin", value: "container-network-vmnet"),
+        ],
+        "network attributes mismatch: \(networks[0].attributes)"
+    )
 
     let volumeData = Data(
         """
@@ -256,6 +265,7 @@ private func testParsesLiveResourceDetail() throws {
               "driver": "local",
               "format": "ext4",
               "name": "testvol",
+              "sizeInBytes": 549755813888,
               "source": "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img"
             },
             "id": "testvol"
@@ -271,6 +281,15 @@ private func testParsesLiveResourceDetail() throws {
     try expect(
         volumes[0].detail == "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img",
         "volume detail mismatch: \(volumes[0].detail ?? "nil")"
+    )
+    try expect(
+        volumes[0].attributes == [
+            ResourceAttribute(label: "Driver", value: "local"),
+            ResourceAttribute(label: "Format", value: "ext4"),
+            ResourceAttribute(label: "Size", value: "512.0 GiB"),
+            ResourceAttribute(label: "Source", value: "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img"),
+        ],
+        "volume attributes mismatch: \(volumes[0].attributes)"
     )
 }
 

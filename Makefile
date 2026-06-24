@@ -1,4 +1,4 @@
-.PHONY: build test run package clean
+.PHONY: build test run package install clean
 
 build:
 	swift build
@@ -11,6 +11,11 @@ run:
 
 package:
 	Scripts/package-app.sh
+
+install: package
+	rm -rf "/Applications/ContainerMenuBar.app"
+	cp -R "dist/ContainerMenuBar.app" "/Applications/ContainerMenuBar.app"
+	@echo "Installed to /Applications/ContainerMenuBar.app — launch it from Finder or Spotlight."
 
 clean:
 	rm -rf .build dist ContainerMenuBar.app
