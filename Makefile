@@ -14,7 +14,7 @@ package:
 
 install: package
 	rm -rf "/Applications/ContainerMenuBar.app"
-	cp -R "dist/ContainerMenuBar.app" "/Applications/ContainerMenuBar.app"
+	cp -R "$(CURDIR)/dist/ContainerMenuBar.app" "/Applications/ContainerMenuBar.app"
 	@echo "Installed to /Applications/ContainerMenuBar.app — launch it from Finder or Spotlight."
 
 clean:

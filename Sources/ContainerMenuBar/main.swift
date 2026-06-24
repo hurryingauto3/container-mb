@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import AppKit
 
 // Explicit entry point. A bare `@main` on an NSApplicationDelegate built via SwiftPM

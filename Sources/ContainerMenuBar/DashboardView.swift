@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import AppKit
 import ContainerCore
 import SwiftUI
@@ -33,6 +35,11 @@ struct DashboardView: View {
                     .lineLimit(1)
             }
             Spacer()
+            Text(AppVersion.current)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .help("ContainerMenuBar \(AppVersion.current)")
+                .accessibilityLabel("App version \(AppVersion.current)")
             if viewModel.isRefreshing {
                 ProgressView()
                     .controlSize(.small)
@@ -132,13 +139,14 @@ struct DashboardView: View {
     }
 
     private func sectionLabel(for section: DashboardSection) -> String {
+        "\(section.title) (\(count(for: section)))"
+    }
+
+    private func count(for section: DashboardSection) -> Int {
         switch section {
-        case .containers:
-            return "Containers (\(viewModel.snapshot.containers.count))"
-        case .volumes:
-            return "Volumes (\(viewModel.snapshot.volumes.count))"
-        case .networks:
-            return "Networks (\(viewModel.snapshot.networks.count))"
+        case .containers: return viewModel.snapshot.containers.count
+        case .volumes: return viewModel.snapshot.volumes.count
+        case .networks: return viewModel.snapshot.networks.count
         }
     }
 

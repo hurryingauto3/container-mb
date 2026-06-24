@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Foundation
 
 public enum ContainerJSONMapper {
@@ -258,11 +260,14 @@ public enum ContainerJSONMapper {
     }
 
     private static func resourceDetail(from item: JSONValue, object: [String: JSONValue]) -> String? {
+        // Precedence mirrors `resourceAttributes` so the one-line detail never disagrees with the
+        // richer attribute list when both a top-level and a nested key are present.
         let candidates: [JSONValue?] = [
             object["subnet"],
             item.value(at: ["status", "ipv4Subnet"]),
-            object["path"],
+            object["source"],
             item.value(at: ["configuration", "source"]),
+            object["path"],
             object["driver"],
             item.value(at: ["configuration", "driver"]),
         ]

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import ContainerCore
 import Darwin
 import Foundation
@@ -15,6 +17,9 @@ enum SmokeTests {
         }
         await suite.run("parses system status table") {
             try testParsesSystemStatusTable()
+        }
+        await suite.run("app version is well-formed semver") {
+            try testAppVersionIsWellFormed()
         }
         await suite.run("parses live container address shape") {
             try testParsesLiveContainerAddressShape()
@@ -176,6 +181,19 @@ private func testParsesSystemStatusTable() throws {
     try expect(state.installed, "system should be installed")
     try expect(state.serviceRunning, "system should be running")
     try expect(state.version == "container CLI version 1.0.0", "version mismatch")
+}
+
+// The packaging script parses AppVersion.marketing into the bundle's CFBundleShortVersionString,
+// which Info.plist requires to be a dotted numeric string; guard the format so a release can't
+// silently produce an invalid Info.plist.
+private func testAppVersionIsWellFormed() throws {
+    let components = AppVersion.marketing.split(separator: ".", omittingEmptySubsequences: false)
+    try expect(components.count == 3, "marketing version must be MAJOR.MINOR.PATCH: \(AppVersion.marketing)")
+    try expect(
+        components.allSatisfy { !$0.isEmpty && $0.allSatisfy(\.isNumber) },
+        "each version component must be a non-empty number: \(AppVersion.marketing)"
+    )
+    try expect(AppVersion.current == "v\(AppVersion.marketing)", "current must prefix marketing with 'v'")
 }
 
 // Regression: the live `container list` JSON puts addresses under status.networks[].ipv4Address
