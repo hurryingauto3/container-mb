@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import AppKit
 import ContainerCore
 import SwiftUI
@@ -57,6 +59,7 @@ struct ContainerDetailView: View {
                         commandSection(container)
                         resourceSection(container)
                         listSection(title: "Networks", values: container.networks)
+                        listSection(title: "IP Addresses", values: container.ipAddresses)
                         listSection(title: "Mounts", values: container.mounts)
                         labelsSection(container)
                     }
@@ -254,5 +257,81 @@ private struct CopyButton: View {
         .buttonStyle(.borderless)
         .font(.caption)
         .help(value)
+    }
+}
+
+struct ResourceListView: View {
+    let resources: [ResourceSummary]
+    let systemImage: String
+    let emptyTitle: String
+    let emptyDetail: String
+
+    var body: some View {
+        if resources.isEmpty {
+            EmptyStateView(title: emptyTitle, detail: emptyDetail)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: 8) {
+                    ForEach(resources) { resource in
+                        ResourceCardView(resource: resource, systemImage: systemImage)
+                    }
+                }
+                .padding(14)
+            }
+        }
+    }
+}
+
+private struct ResourceCardView: View {
+    let resource: ResourceSummary
+    let systemImage: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(.secondary)
+                Text(resource.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 8)
+                if resource.id != resource.name {
+                    Text(resource.id)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                }
+            }
+
+            if !resource.attributes.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(resource.attributes) { attribute in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(attribute.label)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 72, alignment: .leading)
+                            Text(attribute.value)
+                                .font(.system(.caption, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+            } else if let detail = resource.detail {
+                Text(detail)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

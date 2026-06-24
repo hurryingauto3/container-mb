@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Foundation
 
 public enum ContainerRuntimeState: String, Codable, Equatable, Sendable {
@@ -160,15 +162,50 @@ public struct ContainerSummary: Identifiable, Equatable, Sendable {
     public var shortID: String { String(id.prefix(12)) }
 }
 
+public struct ResourceAttribute: Identifiable, Equatable, Sendable {
+    public let label: String
+    public let value: String
+
+    public init(label: String, value: String) {
+        self.label = label
+        self.value = value
+    }
+
+    public var id: String { label }
+}
+
 public struct ResourceSummary: Identifiable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let detail: String?
+    public let attributes: [ResourceAttribute]
 
-    public init(id: String, name: String, detail: String? = nil) {
+    public init(
+        id: String,
+        name: String,
+        detail: String? = nil,
+        attributes: [ResourceAttribute] = []
+    ) {
         self.id = id
         self.name = name
         self.detail = detail
+        self.attributes = attributes
+    }
+}
+
+public enum DashboardSection: String, CaseIterable, Identifiable, Equatable, Sendable {
+    case containers
+    case volumes
+    case networks
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .containers: return "Containers"
+        case .volumes: return "Volumes"
+        case .networks: return "Networks"
+        }
     }
 }
 

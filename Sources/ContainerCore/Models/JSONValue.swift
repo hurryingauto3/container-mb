@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Foundation
 
 public enum JSONValue: Codable, Equatable, Sendable {
@@ -126,18 +128,28 @@ public enum JSONValue: Codable, Equatable, Sendable {
         return nil
     }
 
+    /// Upper bound on recursion depth for `deepValues`. The CLI's real output nests only a handful
+    /// of levels; this guards against pathological or hostile output triggering unbounded recursion
+    /// (stack exhaustion) and is comfortably above any legitimate shape.
+    static let maxTraversalDepth = 256
+
     public func deepValues(named name: String) -> [JSONValue] {
+        deepValues(named: name, depth: 0)
+    }
+
+    private func deepValues(named name: String, depth: Int) -> [JSONValue] {
+        guard depth < Self.maxTraversalDepth else { return [] }
         switch self {
         case .object(let object):
             return object.flatMap { key, value -> [JSONValue] in
-                var values = value.deepValues(named: name)
+                var values = value.deepValues(named: name, depth: depth + 1)
                 if key == name {
                     values.insert(value, at: 0)
                 }
                 return values
             }
         case .array(let array):
-            return array.flatMap { $0.deepValues(named: name) }
+            return array.flatMap { $0.deepValues(named: name, depth: depth + 1) }
         case .string, .number, .bool, .null:
             return []
         }

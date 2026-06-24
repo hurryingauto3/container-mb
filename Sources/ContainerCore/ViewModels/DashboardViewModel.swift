@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Combine
 import Foundation
 
@@ -6,6 +8,7 @@ public final class DashboardViewModel: ObservableObject {
     @Published public private(set) var snapshot: ContainerDashboardSnapshot
     @Published public private(set) var isRefreshing = false
     @Published public var selectedContainerID: String?
+    @Published public var selectedSection: DashboardSection = .containers
 
     private let coordinator: PollingCoordinator
     private let configuration: PollingConfiguration

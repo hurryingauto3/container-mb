@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import Foundation
 
 public enum ContainerJSONMapper {
@@ -34,10 +36,12 @@ public enum ContainerJSONMapper {
             let name = object["name"]?.stringValue
                 ?? item.value(at: ["configuration", "name"])?.stringValue
                 ?? id
-            let detail = object["subnet"]?.stringValue
-                ?? object["path"]?.stringValue
-                ?? object["driver"]?.stringValue
-            return ResourceSummary(id: id, name: name, detail: detail)
+            return ResourceSummary(
+                id: id,
+                name: name,
+                detail: resourceDetail(from: item, object: object),
+                attributes: resourceAttributes(from: item)
+            )
         }
     }
 
@@ -221,9 +225,60 @@ public enum ContainerJSONMapper {
         return Array(NSOrderedSet(array: names)) as? [String] ?? names
     }
 
+    // Networks expose the subnet under status; volumes expose source/driver under configuration.
+    // Extracts the human-readable fields shown for volumes and networks. The same `resources`
+    // endpoint shape backs both, so we probe the union of known keys and keep whatever is present:
+    // volumes carry driver/format/size/source, networks carry mode/subnet/gateway/plugin.
+    private static func resourceAttributes(from item: JSONValue) -> [ResourceAttribute] {
+        var attributes: [ResourceAttribute] = []
+
+        func add(_ label: String, paths: [[String]], transform: (JSONValue) -> String? = { $0.stringValue }) {
+            for path in paths {
+                guard let value = item.value(at: path), let formatted = transform(value), !formatted.isEmpty else {
+                    continue
+                }
+                attributes.append(ResourceAttribute(label: label, value: formatted))
+                return
+            }
+        }
+
+        // Volume fields.
+        add("Driver", paths: [["driver"], ["configuration", "driver"]])
+        add("Format", paths: [["format"], ["configuration", "format"]])
+        add("Size", paths: [["sizeInBytes"], ["configuration", "sizeInBytes"]]) { value in
+            value.uint64Value.map(DisplayFormatters.bytes)
+        }
+        add("Source", paths: [["source"], ["configuration", "source"], ["path"]])
+
+        // Network fields.
+        add("Mode", paths: [["mode"], ["configuration", "mode"]])
+        add("Subnet", paths: [["subnet"], ["status", "ipv4Subnet"], ["configuration", "subnet"]])
+        add("Gateway", paths: [["gateway"], ["status", "ipv4Gateway"]])
+        add("Plugin", paths: [["plugin"], ["configuration", "plugin"]])
+
+        return attributes
+    }
+
+    private static func resourceDetail(from item: JSONValue, object: [String: JSONValue]) -> String? {
+        // Precedence mirrors `resourceAttributes` so the one-line detail never disagrees with the
+        // richer attribute list when both a top-level and a nested key are present.
+        let candidates: [JSONValue?] = [
+            object["subnet"],
+            item.value(at: ["status", "ipv4Subnet"]),
+            object["source"],
+            item.value(at: ["configuration", "source"]),
+            object["path"],
+            object["driver"],
+            item.value(at: ["configuration", "driver"]),
+        ]
+        return candidates.lazy.compactMap { $0?.stringValue }.first
+    }
+
     private static func ipAddresses(from value: JSONValue) -> [String] {
-        let candidates = ["ipAddress", "address", "ip"]
+        let candidates = ["ipAddress", "ipv4Address", "ipv6Address", "address", "ip"]
             .flatMap { key in value.deepValues(named: key).compactMap(\.stringValue) }
+            // The CLI reports addresses in CIDR form (e.g. "192.168.64.2/24"); drop the prefix length.
+            .map { String($0.prefix(while: { $0 != "/" })) }
             .filter { candidate in
                 candidate.contains(".") || candidate.contains(":")
             }

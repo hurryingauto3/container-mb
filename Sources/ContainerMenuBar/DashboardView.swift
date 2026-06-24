@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import AppKit
 import ContainerCore
 import SwiftUI
@@ -11,6 +13,8 @@ struct DashboardView: View {
             header
             Divider()
             summary
+            Divider()
+            sectionPicker
             Divider()
             content
         }
@@ -31,6 +35,11 @@ struct DashboardView: View {
                     .lineLimit(1)
             }
             Spacer()
+            Text(AppVersion.current)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .help("ContainerMenuBar \(AppVersion.current)")
+                .accessibilityLabel("App version \(AppVersion.current)")
             if viewModel.isRefreshing {
                 ProgressView()
                     .controlSize(.small)
@@ -71,11 +80,47 @@ struct DashboardView: View {
         .padding(.vertical, 10)
     }
 
+    private var sectionPicker: some View {
+        Picker("Section", selection: $viewModel.selectedSection) {
+            ForEach(DashboardSection.allCases) { section in
+                Text(sectionLabel(for: section)).tag(section)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
     @ViewBuilder
     private var content: some View {
         if !viewModel.snapshot.system.installed {
             EmptyStateView(title: "container CLI not found", detail: "Install Apple container and make sure it is available on PATH.")
-        } else if let error = viewModel.snapshot.errorMessage, viewModel.snapshot.containers.isEmpty {
+        } else {
+            switch viewModel.selectedSection {
+            case .containers:
+                containersContent
+            case .volumes:
+                ResourceListView(
+                    resources: viewModel.snapshot.volumes,
+                    systemImage: "externaldrive",
+                    emptyTitle: "No volumes",
+                    emptyDetail: "Create one with `container volume create <name>`."
+                )
+            case .networks:
+                ResourceListView(
+                    resources: viewModel.snapshot.networks,
+                    systemImage: "network",
+                    emptyTitle: "No networks",
+                    emptyDetail: "Networks created by Apple container will appear here."
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var containersContent: some View {
+        if let error = viewModel.snapshot.errorMessage, viewModel.snapshot.containers.isEmpty {
             EmptyStateView(title: "Unable to read containers", detail: error)
         } else if viewModel.snapshot.containers.isEmpty {
             EmptyStateView(title: "No containers", detail: "Apple container is installed and reachable.")
@@ -90,6 +135,18 @@ struct DashboardView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+    }
+
+    private func sectionLabel(for section: DashboardSection) -> String {
+        "\(section.title) (\(count(for: section)))"
+    }
+
+    private func count(for section: DashboardSection) -> Int {
+        switch section {
+        case .containers: return viewModel.snapshot.containers.count
+        case .volumes: return viewModel.snapshot.volumes.count
+        case .networks: return viewModel.snapshot.networks.count
         }
     }
 
@@ -139,7 +196,7 @@ private struct MetricBadge: View {
     }
 }
 
-private struct EmptyStateView: View {
+struct EmptyStateView: View {
     let title: String
     let detail: String
 

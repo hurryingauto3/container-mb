@@ -1,7 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import AppKit
 import ContainerCore
 
-@main
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController?
