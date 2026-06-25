@@ -239,6 +239,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
     public let statsByID: [String: ContainerStatsSnapshot]
     public let networks: [ResourceSummary]
     public let volumes: [ResourceSummary]
+    public let diskUsage: DiskUsage?
     public let system: ContainerSystemState
     public let lastUpdated: Date
     public let isStale: Bool
@@ -249,6 +250,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
         statsByID: [String: ContainerStatsSnapshot] = [:],
         networks: [ResourceSummary] = [],
         volumes: [ResourceSummary] = [],
+        diskUsage: DiskUsage? = nil,
         system: ContainerSystemState = .unknown,
         lastUpdated: Date = Date(),
         isStale: Bool = false,
@@ -258,6 +260,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
         self.statsByID = statsByID
         self.networks = networks
         self.volumes = volumes
+        self.diskUsage = diskUsage
         self.system = system
         self.lastUpdated = lastUpdated
         self.isStale = isStale
