@@ -23,6 +23,7 @@ public protocol ContainerCLIClient: Sendable {
     func inspectContainers(ids: [String]) async throws -> [ContainerSummary]
     func listNetworks() async throws -> [ResourceSummary]
     func listVolumes() async throws -> [ResourceSummary]
+    func listImages() async throws -> [ImageSummary]
     func systemState() async -> ContainerSystemState
 }
 
@@ -69,6 +70,12 @@ public struct ProcessContainerCLIClient: ContainerCLIClient {
     public func listVolumes() async throws -> [ResourceSummary] {
         try await ContainerJSONMapper.resources(
             from: runJSON(arguments: ["volume", "list", "--format", "json"])
+        )
+    }
+
+    public func listImages() async throws -> [ImageSummary] {
+        try await ImageJSONMapper.images(
+            from: runJSON(arguments: ["image", "list", "--format", "json"])
         )
     }
 

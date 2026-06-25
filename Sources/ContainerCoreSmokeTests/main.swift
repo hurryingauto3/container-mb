@@ -33,6 +33,9 @@ enum SmokeTests {
         await suite.run("refresh computes CPU percent") {
             try await testRefreshComputesCPUPercent()
         }
+        await suite.run("parses image list shape") {
+            try testParsesImageListShape()
+        }
 
         suite.finish()
     }
@@ -311,6 +314,68 @@ private func testParsesLiveResourceDetail() throws {
     )
 }
 
+private func testParsesImageListShape() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+            "configuration": {
+              "name": "docker.io/library/nginx:alpine",
+              "creationDate": "2026-06-22T20:53:00Z",
+              "descriptor": {
+                "digest": "sha256:1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "size": 10333
+              }
+            },
+            "variants": [
+              {
+                "platform": { "architecture": "arm64", "os": "linux", "variant": "v8" },
+                "size": 25876989,
+                "digest": "sha256:1ff5c7ff",
+                "config": {
+                  "architecture": "arm64",
+                  "os": "linux",
+                  "config": {
+                    "Cmd": ["nginx", "-g", "daemon off;"],
+                    "Entrypoint": ["/docker-entrypoint.sh"],
+                    "Env": ["PATH=/usr/local/sbin", "NGINX_VERSION=1.31.2"],
+                    "ExposedPorts": { "80/tcp": {} },
+                    "Labels": { "maintainer": "NGINX Docker Maintainers" },
+                    "WorkingDir": "/",
+                    "StopSignal": "SIGQUIT"
+                  },
+                  "rootfs": {
+                    "diff_ids": ["sha256:aaa", "sha256:bbb", "sha256:ccc"]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+        """.utf8
+    )
+
+    let images = try ImageJSONMapper.images(from: data)
+
+    try expect(images.count == 1, "expected one image")
+    try expect(images[0].id == "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7", "id mismatch")
+    try expect(images[0].name == "docker.io/library/nginx:alpine", "name mismatch")
+    try expect(images[0].repositoryTag == "docker.io/library/nginx:alpine", "repositoryTag mismatch")
+    try expect(images[0].sizeBytes == 25876989, "size mismatch: \(String(describing: images[0].sizeBytes))")
+    try expect(images[0].shortDigest == "1a8724a52d43", "short digest mismatch: \(images[0].shortDigest)")
+    try expect(images[0].os == "linux", "os mismatch")
+    try expect(images[0].architecture == "arm64", "arch mismatch")
+    try expect(images[0].platformDisplay == "linux/arm64", "platform display mismatch")
+    try expect(images[0].layerCount == 3, "layer count mismatch: \(String(describing: images[0].layerCount))")
+    try expect(images[0].entrypoint == ["/docker-entrypoint.sh"], "entrypoint mismatch")
+    try expect(images[0].command == ["nginx", "-g", "daemon off;"], "cmd mismatch")
+    try expect(images[0].env == ["PATH=/usr/local/sbin", "NGINX_VERSION=1.31.2"], "env mismatch")
+    try expect(images[0].exposedPorts == ["80/tcp"], "exposed ports mismatch")
+    try expect(images[0].createdAt != nil, "createdAt should parse")
+}
+
 private func testBackgroundRefreshSkipsStatsWhenUnchanged() async throws {
     let client = MockContainerCLIClient()
     let coordinator = PollingCoordinator(client: client)
@@ -377,6 +442,17 @@ private actor MockContainerCLIClient: ContainerCLIClient {
 
     func listVolumes() async throws -> [ResourceSummary] {
         [ResourceSummary(id: "postgres", name: "postgres")]
+    }
+
+    func listImages() async throws -> [ImageSummary] {
+        [
+            ImageSummary(
+                id: "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+                name: "docker.io/library/nginx:alpine",
+                sizeBytes: 25876989,
+                raw: .object(["id": .string("1a8724a52d43")])
+            )
+        ]
     }
 
     func systemState() async -> ContainerSystemState {

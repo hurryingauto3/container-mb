@@ -26,6 +26,7 @@ public actor PollingCoordinator {
     private var cachedSnapshot = ContainerDashboardSnapshot()
     private var cachedNetworks: [ResourceSummary] = []
     private var cachedVolumes: [ResourceSummary] = []
+    private var cachedImages: [ImageSummary] = []
     private var cachedStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsDate: Date?
@@ -71,12 +72,17 @@ public actor PollingCoordinator {
                 cachedVolumes = (try? await client.listVolumes()) ?? cachedVolumes
             }
 
+            if mode == .foreground || force || cachedImages.isEmpty {
+                cachedImages = (try? await client.listImages()) ?? cachedImages
+            }
+
             lastContainerSignature = signature
             cachedSnapshot = ContainerDashboardSnapshot(
                 containers: containers,
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                images: cachedImages,
                 system: system,
                 lastUpdated: Date(),
                 isStale: false
@@ -88,6 +94,7 @@ public actor PollingCoordinator {
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                images: cachedImages,
                 system: system,
                 lastUpdated: cachedSnapshot.lastUpdated,
                 isStale: true,
@@ -157,6 +164,7 @@ public actor PollingCoordinator {
             statsByID: cachedSnapshot.statsByID,
             networks: cachedSnapshot.networks,
             volumes: cachedSnapshot.volumes,
+            images: cachedSnapshot.images,
             system: cachedSnapshot.system,
             lastUpdated: cachedSnapshot.lastUpdated,
             isStale: true,
