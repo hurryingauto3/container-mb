@@ -26,6 +26,8 @@ public actor PollingCoordinator {
     private var cachedSnapshot = ContainerDashboardSnapshot()
     private var cachedNetworks: [ResourceSummary] = []
     private var cachedVolumes: [ResourceSummary] = []
+    private var cachedImages: [ImageSummary] = []
+    private var cachedDiskUsage: DiskUsage?
     private var cachedStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsDate: Date?
@@ -38,6 +40,20 @@ public actor PollingCoordinator {
 
     public func snapshot() -> ContainerDashboardSnapshot {
         cachedSnapshot
+    }
+
+    // Lazy, user-driven passthroughs. These are intentionally NOT part of the poll loop: they fire
+    // only on selection/expand and keep the single client owner inside the actor.
+    public func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String {
+        try await client.containerLogs(id: id, lines: lines, boot: boot)
+    }
+
+    public func inspectVolume(name: String) async throws -> ResourceSummary? {
+        try await client.inspectVolume(name: name)
+    }
+
+    public func inspectNetwork(name: String) async throws -> ResourceSummary? {
+        try await client.inspectNetwork(name: name)
     }
 
     public func refresh(mode: PollingMode, force: Bool = false) async -> ContainerDashboardSnapshot {
@@ -71,12 +87,24 @@ public actor PollingCoordinator {
                 cachedVolumes = (try? await client.listVolumes()) ?? cachedVolumes
             }
 
+            if mode == .foreground || force || cachedImages.isEmpty {
+                cachedImages = (try? await client.listImages()) ?? cachedImages
+            }
+
+            // `system df` is cheap (no double-sample like `stats`), so refresh it on every poll
+            // rather than gating it behind the stats signature: disk usage changes when images
+            // or volumes change even if the running container set does not. Both foreground (5s)
+            // and background (30s) cadences are slow relative to its cost.
+            cachedDiskUsage = (try? await client.diskUsage()) ?? cachedDiskUsage
+
             lastContainerSignature = signature
             cachedSnapshot = ContainerDashboardSnapshot(
                 containers: containers,
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                images: cachedImages,
+                diskUsage: cachedDiskUsage,
                 system: system,
                 lastUpdated: Date(),
                 isStale: false
@@ -88,6 +116,8 @@ public actor PollingCoordinator {
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                images: cachedImages,
+                diskUsage: cachedDiskUsage,
                 system: system,
                 lastUpdated: cachedSnapshot.lastUpdated,
                 isStale: true,
@@ -157,6 +187,8 @@ public actor PollingCoordinator {
             statsByID: cachedSnapshot.statsByID,
             networks: cachedSnapshot.networks,
             volumes: cachedSnapshot.volumes,
+            images: cachedSnapshot.images,
+            diskUsage: cachedSnapshot.diskUsage,
             system: cachedSnapshot.system,
             lastUpdated: cachedSnapshot.lastUpdated,
             isStale: true,

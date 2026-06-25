@@ -29,9 +29,17 @@ IPs, and more — without ever mutating runtime state.
 
 - **Containers** — running state, image, CPU %, memory, network/block I/O,
   process count, published ports, command, resource limits, networks, IP
-  addresses, mounts, and labels.
-- **Volumes** — driver, format, size, and source path.
-- **Networks** — mode, subnet, gateway, and plugin.
+  addresses, mounts, and labels. Plus an on-demand **logs viewer** (last 200
+  lines, with a `--boot` toggle for VM/kernel init output).
+- **Images** — name/tag, on-disk size, platform, short digest, and age; detail
+  panel adds the full digest, entrypoint, command, exposed ports, env, and layer
+  count.
+- **Volumes** — driver, format, size, and source path; select one to `inspect`
+  for the full mount path, options, labels, and creation date.
+- **Networks** — mode, subnet, gateway, and plugin; select one to `inspect` for
+  the IPv6 subnet and labels, with an attached-containers deep-link.
+- **Disk usage** — a header widget summarizing images/containers/volumes on-disk
+  usage (`system df`).
 - **Menu-bar glance** — running/total count without opening the window.
 - **Efficient polling** — the expensive `stats` call is skipped on background
   polls unless the container set changes; 5 s when open, 30 s when closed.
@@ -76,8 +84,7 @@ make dmg          # or build a distributable dist/ContainerMenuBar-<version>.dmg
    (see [apple/container](https://github.com/apple/container)).
 2. Install ContainerMenuBar from the DMG (above).
 3. Click the box icon (`ctr N`) in the menu bar to open the dashboard, then use
-   the segmented control to switch between **Containers**, **Volumes**, and
-   **Networks**. It refreshes automatically; the refresh button forces an update.
+   the segmented control to switch between **Containers**, **Images**, **Volumes**, and **Networks**. It refreshes automatically; the refresh button forces an update.
 
 ## Usage
 
@@ -92,8 +99,7 @@ make clean
 ```
 
 It is a menu-bar app: look for the box icon in the top-right menu bar (it shows
-`ctr <running>`). Click it to open the dashboard; switch between Containers,
-Volumes, and Networks with the segmented control.
+`ctr <running>`). Click it to open the dashboard; switch between Containers, Images, Volumes, and Networks with the segmented control.
 
 ## Versioning
 

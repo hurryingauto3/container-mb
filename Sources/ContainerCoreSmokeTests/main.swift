@@ -27,11 +27,26 @@ enum SmokeTests {
         await suite.run("parses live network and volume detail") {
             try testParsesLiveResourceDetail()
         }
+        await suite.run("parses system disk usage") {
+            try testParsesSystemDiskUsage()
+        }
+        await suite.run("parses volume inspect detail") {
+            try testParsesVolumeInspectDetail()
+        }
+        await suite.run("parses network inspect detail") {
+            try testParsesNetworkInspectDetail()
+        }
+        await suite.run("coordinator logs/inspect passthrough") {
+            try await testCoordinatorLogsPassthrough()
+        }
         await suite.run("background refresh skips unchanged stats") {
             try await testBackgroundRefreshSkipsStatsWhenUnchanged()
         }
         await suite.run("refresh computes CPU percent") {
             try await testRefreshComputesCPUPercent()
+        }
+        await suite.run("parses image list shape") {
+            try testParsesImageListShape()
         }
 
         suite.finish()
@@ -311,6 +326,202 @@ private func testParsesLiveResourceDetail() throws {
     )
 }
 
+// `container system df --format json` emits a top-level OBJECT keyed by section, unlike the array
+// shape the rest of the CLI uses; verify DiskUsageJSONMapper decodes the object directly.
+private func testParsesSystemDiskUsage() throws {
+    let data = Data(
+        """
+        {
+          "containers" : { "active" : 1, "reclaimable" : 0,         "sizeInBytes" : 324440064, "total" : 1 },
+          "images"     : { "active" : 1, "reclaimable" : 240021504, "sizeInBytes" : 400912384, "total" : 2 },
+          "volumes"    : { "active" : 0, "reclaimable" : 69390336,  "sizeInBytes" : 69390336,  "total" : 1 }
+        }
+        """.utf8
+    )
+
+    let usage = try DiskUsageJSONMapper.diskUsage(from: data)
+
+    try expect(usage.images.sizeBytes == 400912384, "images size mismatch")
+    try expect(usage.images.reclaimableBytes == 240021504, "images reclaimable mismatch")
+    try expect(usage.images.totalCount == 2, "images total mismatch")
+    try expect(usage.containers.sizeBytes == 324440064, "containers size mismatch")
+    try expect(usage.containers.totalCount == 1, "containers total mismatch")
+    try expect(usage.volumes.reclaimableBytes == 69390336, "volumes reclaimable mismatch")
+    try expect(usage.volumes.activeCount == 0, "volumes active mismatch")
+    try expect(
+        usage.totalSizeBytes == 400912384 + 324440064 + 69390336,
+        "total size mismatch: \(usage.totalSizeBytes)"
+    )
+}
+
+private func testParsesImageListShape() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+            "configuration": {
+              "name": "docker.io/library/nginx:alpine",
+              "creationDate": "2026-06-22T20:53:00Z",
+              "descriptor": {
+                "digest": "sha256:1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+                "mediaType": "application/vnd.oci.image.index.v1+json",
+                "size": 10333
+              }
+            },
+            "variants": [
+              {
+                "platform": { "architecture": "arm64", "os": "linux", "variant": "v8" },
+                "size": 25876989,
+                "digest": "sha256:1ff5c7ff",
+                "config": {
+                  "architecture": "arm64",
+                  "os": "linux",
+                  "config": {
+                    "Cmd": ["nginx", "-g", "daemon off;"],
+                    "Entrypoint": ["/docker-entrypoint.sh"],
+                    "Env": ["PATH=/usr/local/sbin", "NGINX_VERSION=1.31.2"],
+                    "ExposedPorts": { "80/tcp": {} },
+                    "Labels": { "maintainer": "NGINX Docker Maintainers" },
+                    "WorkingDir": "/",
+                    "StopSignal": "SIGQUIT"
+                  },
+                  "rootfs": {
+                    "diff_ids": ["sha256:aaa", "sha256:bbb", "sha256:ccc"]
+                  }
+                }
+              }
+            ]
+          }
+        ]
+        """.utf8
+    )
+
+    let images = try ImageJSONMapper.images(from: data)
+
+    try expect(images.count == 1, "expected one image")
+    try expect(images[0].id == "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7", "id mismatch")
+    try expect(images[0].name == "docker.io/library/nginx:alpine", "name mismatch")
+    try expect(images[0].repositoryTag == "docker.io/library/nginx:alpine", "repositoryTag mismatch")
+    try expect(images[0].sizeBytes == 25876989, "size mismatch: \(String(describing: images[0].sizeBytes))")
+    try expect(images[0].shortDigest == "1a8724a52d43", "short digest mismatch: \(images[0].shortDigest)")
+    try expect(images[0].os == "linux", "os mismatch")
+    try expect(images[0].architecture == "arm64", "arch mismatch")
+    try expect(images[0].platformDisplay == "linux/arm64", "platform display mismatch")
+    try expect(images[0].layerCount == 3, "layer count mismatch: \(String(describing: images[0].layerCount))")
+    try expect(images[0].entrypoint == ["/docker-entrypoint.sh"], "entrypoint mismatch")
+    try expect(images[0].command == ["nginx", "-g", "daemon off;"], "cmd mismatch")
+    try expect(images[0].env == ["PATH=/usr/local/sbin", "NGINX_VERSION=1.31.2"], "env mismatch")
+    try expect(images[0].exposedPorts == ["80/tcp"], "exposed ports mismatch")
+    try expect(images[0].createdAt != nil, "createdAt should parse")
+}
+
+// `volume inspect` adds source/labels/options/creationDate beyond the list shape. Asserts the
+// list-level attributes (Driver/Format/Size/Source) plus the inspect-only Created and Label entries.
+private func testParsesVolumeInspectDetail() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "testvol",
+            "configuration": {
+              "driver": "local",
+              "format": "ext4",
+              "name": "testvol",
+              "sizeInBytes": 549755813888,
+              "source": "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img",
+              "creationDate": "2026-06-24T02:04:11Z",
+              "labels": { "env": "test", "app": "db" },
+              "options": {}
+            }
+          }
+        ]
+        """.utf8
+    )
+
+    let volumes = try ContainerJSONMapper.resources(from: data)
+    try expect(volumes.count == 1, "expected one volume")
+    let labels = volumes[0].attributes.map(\.label)
+    try expect(labels.contains("Driver"), "missing Driver: \(labels)")
+    try expect(labels.contains("Format"), "missing Format: \(labels)")
+    try expect(labels.contains("Size"), "missing Size: \(labels)")
+    try expect(labels.contains("Source"), "missing Source: \(labels)")
+    try expect(labels.contains("Created"), "missing Created: \(labels)")
+    // Labels are emitted one attribute per key, sorted: "app" before "env".
+    try expect(
+        volumes[0].attributes.contains(ResourceAttribute(label: "Label: app", value: "db")),
+        "missing Label: app: \(volumes[0].attributes)"
+    )
+    try expect(
+        volumes[0].attributes.contains(ResourceAttribute(label: "Label: env", value: "test")),
+        "missing Label: env: \(volumes[0].attributes)"
+    )
+    let appIndex = labels.firstIndex(of: "Label: app")
+    let envIndex = labels.firstIndex(of: "Label: env")
+    try expect((appIndex ?? 0) < (envIndex ?? 0), "label ordering not sorted: \(labels)")
+}
+
+// `network inspect` adds ipv6Subnet/labels/creationDate/options beyond the list shape. Asserts the
+// list-level attributes (Mode/Subnet/Gateway/Plugin) plus IPv6 Subnet and a Label entry.
+private func testParsesNetworkInspectDetail() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "default",
+            "configuration": {
+              "mode": "nat",
+              "name": "default",
+              "plugin": "container-network-vmnet",
+              "creationDate": "2026-06-24T01:57:25Z",
+              "labels": { "com.apple.container.resource.role": "builtin" },
+              "options": {}
+            },
+            "status": {
+              "ipv4Gateway": "192.168.64.1",
+              "ipv4Subnet": "192.168.64.0/24",
+              "ipv6Subnet": "fd37:5540:3aa9:5b60::/64"
+            }
+          }
+        ]
+        """.utf8
+    )
+
+    let networks = try ContainerJSONMapper.resources(from: data)
+    try expect(networks.count == 1, "expected one network")
+    let labels = networks[0].attributes.map(\.label)
+    try expect(labels.contains("Mode"), "missing Mode: \(labels)")
+    try expect(labels.contains("Subnet"), "missing Subnet: \(labels)")
+    try expect(labels.contains("Gateway"), "missing Gateway: \(labels)")
+    try expect(labels.contains("Plugin"), "missing Plugin: \(labels)")
+    try expect(
+        networks[0].attributes.contains(ResourceAttribute(label: "IPv6 Subnet", value: "fd37:5540:3aa9:5b60::/64")),
+        "missing IPv6 Subnet: \(networks[0].attributes)"
+    )
+    try expect(labels.contains("Created"), "missing Created: \(labels)")
+    try expect(
+        networks[0].attributes.contains(
+            ResourceAttribute(label: "Label: com.apple.container.resource.role", value: "builtin")
+        ),
+        "missing builtin label: \(networks[0].attributes)"
+    )
+}
+
+private func testCoordinatorLogsPassthrough() async throws {
+    let client = MockContainerCLIClient()
+    let coordinator = PollingCoordinator(client: client)
+
+    let logs = try await coordinator.containerLogs(id: "abc", lines: 200, boot: false)
+    try expect(logs.contains("abc"), "logs should mention the container id: \(logs)")
+    try expect(logs.contains("n=200"), "logs should reflect the 200-line bound: \(logs)")
+
+    let boot = try await coordinator.containerLogs(id: "abc", lines: 200, boot: true)
+    try expect(boot.contains("crng init done"), "boot logs mismatch: \(boot)")
+
+    let volume = try await coordinator.inspectVolume(name: "testvol")
+    try expect(volume?.id == "testvol", "volume inspect passthrough mismatch")
+}
+
 private func testBackgroundRefreshSkipsStatsWhenUnchanged() async throws {
     let client = MockContainerCLIClient()
     let coordinator = PollingCoordinator(client: client)
@@ -379,8 +590,39 @@ private actor MockContainerCLIClient: ContainerCLIClient {
         [ResourceSummary(id: "postgres", name: "postgres")]
     }
 
+    func listImages() async throws -> [ImageSummary] {
+        [
+            ImageSummary(
+                id: "1a8724a52d432501548a8d8681bb1554c2d09778f8b9ed0882fc3442549980b7",
+                name: "docker.io/library/nginx:alpine",
+                sizeBytes: 25876989,
+                raw: .object(["id": .string("1a8724a52d43")])
+            )
+        ]
+    }
+
+    func diskUsage() async throws -> DiskUsage {
+        DiskUsage(
+            images: DiskUsageEntry(sizeBytes: 400912384, reclaimableBytes: 240021504, activeCount: 1, totalCount: 2),
+            containers: DiskUsageEntry(sizeBytes: 324440064, reclaimableBytes: 0, activeCount: 1, totalCount: 1),
+            volumes: DiskUsageEntry(sizeBytes: 69390336, reclaimableBytes: 69390336, activeCount: 0, totalCount: 1)
+        )
+    }
+
     func systemState() async -> ContainerSystemState {
         ContainerSystemState(installed: true, serviceRunning: true, version: "1.0.0")
+    }
+
+    func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String {
+        boot ? "[    0.069837] random: crng init done" : "log line for \(id) (n=\(lines))"
+    }
+
+    func inspectVolume(name: String) async throws -> ResourceSummary? {
+        ResourceSummary(id: name, name: name, detail: "/volumes/\(name)/volume.img")
+    }
+
+    func inspectNetwork(name: String) async throws -> ResourceSummary? {
+        ResourceSummary(id: name, name: name, detail: "192.168.64.0/24")
     }
 
     func statsCallCount() -> Int {

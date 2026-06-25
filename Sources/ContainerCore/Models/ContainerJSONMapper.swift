@@ -256,7 +256,28 @@ public enum ContainerJSONMapper {
         add("Gateway", paths: [["gateway"], ["status", "ipv4Gateway"]])
         add("Plugin", paths: [["plugin"], ["configuration", "plugin"]])
 
+        // Inspect-only fields. These keys are absent from `list` output (which is why the existing
+        // `testParsesLiveResourceDetail` list assertions stay stable) and only appear when the
+        // richer `volume inspect`/`network inspect` shapes are mapped, so they are purely additive.
+        add("IPv6 Subnet", paths: [["status", "ipv6Subnet"]])
+        add("Created", paths: [["creationDate"], ["configuration", "creationDate"]])
+        addObjectEntries("Label", paths: [["labels"], ["configuration", "labels"]])
+        addObjectEntries("Option", paths: [["options"], ["configuration", "options"]])
+
         return attributes
+
+        // Appends one attribute per key in the first non-empty object found at `paths`, sorted by
+        // key for deterministic ordering. Empty objects (the common case in list output) add nothing.
+        func addObjectEntries(_ prefix: String, paths: [[String]]) {
+            for path in paths {
+                guard let object = item.value(at: path)?.objectValue, !object.isEmpty else { continue }
+                for key in object.keys.sorted() {
+                    guard let value = object[key]?.stringValue, !value.isEmpty else { continue }
+                    attributes.append(ResourceAttribute(label: "\(prefix): \(key)", value: value))
+                }
+                return
+            }
+        }
     }
 
     private static func resourceDetail(from item: JSONValue, object: [String: JSONValue]) -> String? {

@@ -13,6 +13,10 @@ struct DashboardView: View {
             header
             Divider()
             summary
+            if let diskUsage = viewModel.snapshot.diskUsage {
+                Divider()
+                diskUsageRow(diskUsage)
+            }
             Divider()
             sectionPicker
             Divider()
@@ -69,6 +73,7 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             MetricBadge(title: "Running", value: "\(viewModel.snapshot.runningCount)")
             MetricBadge(title: "Total", value: "\(viewModel.snapshot.containers.count)")
+            MetricBadge(title: "Images", value: "\(viewModel.snapshot.images.count)")
             MetricBadge(title: "Networks", value: "\(viewModel.snapshot.networks.count)")
             MetricBadge(title: "Volumes", value: "\(viewModel.snapshot.volumes.count)")
             Spacer()
@@ -78,6 +83,20 @@ struct DashboardView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+
+    private func diskUsageRow(_ diskUsage: DiskUsage) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "internaldrive")
+                .foregroundStyle(.secondary)
+            DiskBadge(title: "Images", value: DisplayFormatters.bytes(diskUsage.images.sizeBytes))
+            DiskBadge(title: "Containers", value: DisplayFormatters.bytes(diskUsage.containers.sizeBytes))
+            DiskBadge(title: "Volumes", value: DisplayFormatters.bytes(diskUsage.volumes.sizeBytes))
+            Spacer()
+            DiskBadge(title: "Total", value: DisplayFormatters.bytes(diskUsage.totalSizeBytes))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     private var sectionPicker: some View {
@@ -100,19 +119,25 @@ struct DashboardView: View {
             switch viewModel.selectedSection {
             case .containers:
                 containersContent
+            case .images:
+                imagesContent
             case .volumes:
                 ResourceListView(
                     resources: viewModel.snapshot.volumes,
                     systemImage: "externaldrive",
                     emptyTitle: "No volumes",
-                    emptyDetail: "Create one with `container volume create <name>`."
+                    emptyDetail: "Create one with `container volume create <name>`.",
+                    kind: .volume,
+                    viewModel: viewModel
                 )
             case .networks:
                 ResourceListView(
                     resources: viewModel.snapshot.networks,
                     systemImage: "network",
                     emptyTitle: "No networks",
-                    emptyDetail: "Networks created by Apple container will appear here."
+                    emptyDetail: "Networks created by Apple container will appear here.",
+                    kind: .network,
+                    viewModel: viewModel
                 )
             }
         }
@@ -131,10 +156,46 @@ struct DashboardView: View {
                 Divider()
                 ContainerDetailView(
                     container: viewModel.selectedContainer,
-                    stats: viewModel.selectedContainer.flatMap { viewModel.snapshot.statsByID[$0.id] }
+                    stats: viewModel.selectedContainer.flatMap { viewModel.snapshot.statsByID[$0.id] },
+                    viewModel: viewModel
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var imagesContent: some View {
+        if let error = viewModel.snapshot.errorMessage, viewModel.snapshot.images.isEmpty {
+            EmptyStateView(title: "Unable to read images", detail: error)
+        } else if viewModel.snapshot.images.isEmpty {
+            EmptyStateView(title: "No images", detail: "Pull one with `container image pull <name>`.")
+        } else {
+            HStack(spacing: 0) {
+                imageList
+                    .frame(width: 310)
+                Divider()
+                ImageDetailView(image: viewModel.selectedImage)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private var imageList: some View {
+        ScrollView {
+            LazyVStack(spacing: 6) {
+                ForEach(viewModel.snapshot.images) { image in
+                    ImageRowView(
+                        image: image,
+                        selected: viewModel.selectedImageID == image.id
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.select(imageID: image.id)
+                    }
+                }
+            }
+            .padding(10)
         }
     }
 
@@ -145,6 +206,7 @@ struct DashboardView: View {
     private func count(for section: DashboardSection) -> Int {
         switch section {
         case .containers: return viewModel.snapshot.containers.count
+        case .images: return viewModel.snapshot.images.count
         case .volumes: return viewModel.snapshot.volumes.count
         case .networks: return viewModel.snapshot.networks.count
         }
@@ -193,6 +255,21 @@ private struct MetricBadge: View {
                 .font(.system(.body, design: .monospaced))
         }
         .frame(width: 76, alignment: .leading)
+    }
+}
+
+private struct DiskBadge: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+        }
     }
 }
 
