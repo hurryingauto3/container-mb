@@ -27,6 +27,9 @@ enum SmokeTests {
         await suite.run("parses live network and volume detail") {
             try testParsesLiveResourceDetail()
         }
+        await suite.run("parses system disk usage") {
+            try testParsesSystemDiskUsage()
+        }
         await suite.run("background refresh skips unchanged stats") {
             try await testBackgroundRefreshSkipsStatsWhenUnchanged()
         }
@@ -311,6 +314,34 @@ private func testParsesLiveResourceDetail() throws {
     )
 }
 
+// `container system df --format json` emits a top-level OBJECT keyed by section, unlike the array
+// shape the rest of the CLI uses; verify DiskUsageJSONMapper decodes the object directly.
+private func testParsesSystemDiskUsage() throws {
+    let data = Data(
+        """
+        {
+          "containers" : { "active" : 1, "reclaimable" : 0,         "sizeInBytes" : 324440064, "total" : 1 },
+          "images"     : { "active" : 1, "reclaimable" : 240021504, "sizeInBytes" : 400912384, "total" : 2 },
+          "volumes"    : { "active" : 0, "reclaimable" : 69390336,  "sizeInBytes" : 69390336,  "total" : 1 }
+        }
+        """.utf8
+    )
+
+    let usage = try DiskUsageJSONMapper.diskUsage(from: data)
+
+    try expect(usage.images.sizeBytes == 400912384, "images size mismatch")
+    try expect(usage.images.reclaimableBytes == 240021504, "images reclaimable mismatch")
+    try expect(usage.images.totalCount == 2, "images total mismatch")
+    try expect(usage.containers.sizeBytes == 324440064, "containers size mismatch")
+    try expect(usage.containers.totalCount == 1, "containers total mismatch")
+    try expect(usage.volumes.reclaimableBytes == 69390336, "volumes reclaimable mismatch")
+    try expect(usage.volumes.activeCount == 0, "volumes active mismatch")
+    try expect(
+        usage.totalSizeBytes == 400912384 + 324440064 + 69390336,
+        "total size mismatch: \(usage.totalSizeBytes)"
+    )
+}
+
 private func testBackgroundRefreshSkipsStatsWhenUnchanged() async throws {
     let client = MockContainerCLIClient()
     let coordinator = PollingCoordinator(client: client)
@@ -377,6 +408,14 @@ private actor MockContainerCLIClient: ContainerCLIClient {
 
     func listVolumes() async throws -> [ResourceSummary] {
         [ResourceSummary(id: "postgres", name: "postgres")]
+    }
+
+    func diskUsage() async throws -> DiskUsage {
+        DiskUsage(
+            images: DiskUsageEntry(sizeBytes: 400912384, reclaimableBytes: 240021504, activeCount: 1, totalCount: 2),
+            containers: DiskUsageEntry(sizeBytes: 324440064, reclaimableBytes: 0, activeCount: 1, totalCount: 1),
+            volumes: DiskUsageEntry(sizeBytes: 69390336, reclaimableBytes: 69390336, activeCount: 0, totalCount: 1)
+        )
     }
 
     func systemState() async -> ContainerSystemState {

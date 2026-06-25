@@ -26,6 +26,7 @@ public actor PollingCoordinator {
     private var cachedSnapshot = ContainerDashboardSnapshot()
     private var cachedNetworks: [ResourceSummary] = []
     private var cachedVolumes: [ResourceSummary] = []
+    private var cachedDiskUsage: DiskUsage?
     private var cachedStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsByID: [String: ContainerStatsSnapshot] = [:]
     private var previousStatsDate: Date?
@@ -71,12 +72,19 @@ public actor PollingCoordinator {
                 cachedVolumes = (try? await client.listVolumes()) ?? cachedVolumes
             }
 
+            // `system df` is cheap (no double-sample like `stats`), so refresh it on every poll
+            // rather than gating it behind the stats signature: disk usage changes when images
+            // or volumes change even if the running container set does not. Both foreground (5s)
+            // and background (30s) cadences are slow relative to its cost.
+            cachedDiskUsage = (try? await client.diskUsage()) ?? cachedDiskUsage
+
             lastContainerSignature = signature
             cachedSnapshot = ContainerDashboardSnapshot(
                 containers: containers,
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                diskUsage: cachedDiskUsage,
                 system: system,
                 lastUpdated: Date(),
                 isStale: false
@@ -88,6 +96,7 @@ public actor PollingCoordinator {
                 statsByID: cachedStatsByID,
                 networks: cachedNetworks,
                 volumes: cachedVolumes,
+                diskUsage: cachedDiskUsage,
                 system: system,
                 lastUpdated: cachedSnapshot.lastUpdated,
                 isStale: true,
@@ -157,6 +166,7 @@ public actor PollingCoordinator {
             statsByID: cachedSnapshot.statsByID,
             networks: cachedSnapshot.networks,
             volumes: cachedSnapshot.volumes,
+            diskUsage: cachedSnapshot.diskUsage,
             system: cachedSnapshot.system,
             lastUpdated: cachedSnapshot.lastUpdated,
             isStale: true,

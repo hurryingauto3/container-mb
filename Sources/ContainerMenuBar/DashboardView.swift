@@ -13,6 +13,10 @@ struct DashboardView: View {
             header
             Divider()
             summary
+            if let diskUsage = viewModel.snapshot.diskUsage {
+                Divider()
+                diskUsageRow(diskUsage)
+            }
             Divider()
             sectionPicker
             Divider()
@@ -78,6 +82,20 @@ struct DashboardView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+
+    private func diskUsageRow(_ diskUsage: DiskUsage) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "internaldrive")
+                .foregroundStyle(.secondary)
+            DiskBadge(title: "Images", value: DisplayFormatters.bytes(diskUsage.images.sizeBytes))
+            DiskBadge(title: "Containers", value: DisplayFormatters.bytes(diskUsage.containers.sizeBytes))
+            DiskBadge(title: "Volumes", value: DisplayFormatters.bytes(diskUsage.volumes.sizeBytes))
+            Spacer()
+            DiskBadge(title: "Total", value: DisplayFormatters.bytes(diskUsage.totalSizeBytes))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     private var sectionPicker: some View {
@@ -193,6 +211,21 @@ private struct MetricBadge: View {
                 .font(.system(.body, design: .monospaced))
         }
         .frame(width: 76, alignment: .leading)
+    }
+}
+
+private struct DiskBadge: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.system(.caption, design: .monospaced))
+        }
     }
 }
 
