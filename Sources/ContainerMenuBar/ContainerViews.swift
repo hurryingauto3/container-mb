@@ -242,6 +242,15 @@ private struct LogsSection: View {
                 viewModel.reloadLogs()
             }
         }
+        .onChange(of: container.id) { newID in
+            // The Logs disclosure keeps its `expanded` @State across container
+            // selections (same view identity), so switching containers while it
+            // is open must re-fetch — otherwise the panel shows the prior
+            // container's (now cleared) logs and never reloads on its own.
+            if expanded {
+                viewModel.loadLogs(for: newID, boot: viewModel.logsShowBoot)
+            }
+        }
     }
 
     private var header: some View {
