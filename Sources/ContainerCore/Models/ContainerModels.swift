@@ -195,6 +195,7 @@ public struct ResourceSummary: Identifiable, Equatable, Sendable {
 
 public enum DashboardSection: String, CaseIterable, Identifiable, Equatable, Sendable {
     case containers
+    case images
     case volumes
     case networks
 
@@ -203,6 +204,7 @@ public enum DashboardSection: String, CaseIterable, Identifiable, Equatable, Sen
     public var title: String {
         switch self {
         case .containers: return "Containers"
+        case .images: return "Images"
         case .volumes: return "Volumes"
         case .networks: return "Networks"
         }
@@ -239,6 +241,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
     public let statsByID: [String: ContainerStatsSnapshot]
     public let networks: [ResourceSummary]
     public let volumes: [ResourceSummary]
+    public let images: [ImageSummary]
     public let diskUsage: DiskUsage?
     public let system: ContainerSystemState
     public let lastUpdated: Date
@@ -250,6 +253,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
         statsByID: [String: ContainerStatsSnapshot] = [:],
         networks: [ResourceSummary] = [],
         volumes: [ResourceSummary] = [],
+        images: [ImageSummary] = [],
         diskUsage: DiskUsage? = nil,
         system: ContainerSystemState = .unknown,
         lastUpdated: Date = Date(),
@@ -260,6 +264,7 @@ public struct ContainerDashboardSnapshot: Equatable, Sendable {
         self.statsByID = statsByID
         self.networks = networks
         self.volumes = volumes
+        self.images = images
         self.diskUsage = diskUsage
         self.system = system
         self.lastUpdated = lastUpdated

@@ -8,6 +8,7 @@ public final class DashboardViewModel: ObservableObject {
     @Published public private(set) var snapshot: ContainerDashboardSnapshot
     @Published public private(set) var isRefreshing = false
     @Published public var selectedContainerID: String?
+    @Published public var selectedImageID: String?
     @Published public var selectedSection: DashboardSection = .containers
 
     private let coordinator: PollingCoordinator
@@ -45,6 +46,11 @@ public final class DashboardViewModel: ObservableObject {
         return snapshot.containers.first { $0.id == selectedContainerID }
     }
 
+    public var selectedImage: ImageSummary? {
+        guard let selectedImageID else { return snapshot.images.first }
+        return snapshot.images.first { $0.id == selectedImageID }
+    }
+
     public func start() {
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
@@ -68,6 +74,10 @@ public final class DashboardViewModel: ObservableObject {
 
     public func select(containerID: String?) {
         selectedContainerID = containerID
+    }
+
+    public func select(imageID: String?) {
+        selectedImageID = imageID
     }
 
     public func refreshNow() {
@@ -97,6 +107,11 @@ public final class DashboardViewModel: ObservableObject {
             self.selectedContainerID = snapshot.containers.first?.id
         } else if selectedContainerID == nil {
             selectedContainerID = snapshot.containers.first?.id
+        }
+
+        if let selectedImageID,
+           !snapshot.images.contains(where: { $0.id == selectedImageID }) {
+            self.selectedImageID = nil
         }
     }
 }

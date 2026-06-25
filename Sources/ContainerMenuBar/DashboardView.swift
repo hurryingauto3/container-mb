@@ -73,6 +73,7 @@ struct DashboardView: View {
         HStack(spacing: 10) {
             MetricBadge(title: "Running", value: "\(viewModel.snapshot.runningCount)")
             MetricBadge(title: "Total", value: "\(viewModel.snapshot.containers.count)")
+            MetricBadge(title: "Images", value: "\(viewModel.snapshot.images.count)")
             MetricBadge(title: "Networks", value: "\(viewModel.snapshot.networks.count)")
             MetricBadge(title: "Volumes", value: "\(viewModel.snapshot.volumes.count)")
             Spacer()
@@ -118,6 +119,8 @@ struct DashboardView: View {
             switch viewModel.selectedSection {
             case .containers:
                 containersContent
+            case .images:
+                imagesContent
             case .volumes:
                 ResourceListView(
                     resources: viewModel.snapshot.volumes,
@@ -156,6 +159,41 @@ struct DashboardView: View {
         }
     }
 
+    @ViewBuilder
+    private var imagesContent: some View {
+        if let error = viewModel.snapshot.errorMessage, viewModel.snapshot.images.isEmpty {
+            EmptyStateView(title: "Unable to read images", detail: error)
+        } else if viewModel.snapshot.images.isEmpty {
+            EmptyStateView(title: "No images", detail: "Pull one with `container image pull <name>`.")
+        } else {
+            HStack(spacing: 0) {
+                imageList
+                    .frame(width: 310)
+                Divider()
+                ImageDetailView(image: viewModel.selectedImage)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    private var imageList: some View {
+        ScrollView {
+            LazyVStack(spacing: 6) {
+                ForEach(viewModel.snapshot.images) { image in
+                    ImageRowView(
+                        image: image,
+                        selected: viewModel.selectedImageID == image.id
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.select(imageID: image.id)
+                    }
+                }
+            }
+            .padding(10)
+        }
+    }
+
     private func sectionLabel(for section: DashboardSection) -> String {
         "\(section.title) (\(count(for: section)))"
     }
@@ -163,6 +201,7 @@ struct DashboardView: View {
     private func count(for section: DashboardSection) -> Int {
         switch section {
         case .containers: return viewModel.snapshot.containers.count
+        case .images: return viewModel.snapshot.images.count
         case .volumes: return viewModel.snapshot.volumes.count
         case .networks: return viewModel.snapshot.networks.count
         }
