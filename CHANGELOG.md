@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-06-24
+
+Five read-only Tier 1 roadmap features (no change to the read-only model).
+
+### Added
+
+- **Images tab**: a fourth section listing local images (`container image list`)
+  with name/tag, on-disk size, platform, short digest, and age; the detail panel
+  shows the full digest, entrypoint, command, exposed ports, env, and layer count.
+- **Container logs viewer**: a collapsible Logs section in the container detail
+  panel that fetches the last 200 lines on demand (`container logs -n 200`), with
+  a `--boot` toggle for VM/kernel init output and a copy-all action.
+- **Volume detail inspect**: selecting a volume lazily runs `volume inspect` to
+  add the full mount source path, driver options, labels, and creation date.
+- **Network detail inspect**: selecting a network lazily runs `network inspect`
+  to add the IPv6 subnet, labels, and creation date, plus an "Attached
+  containers" list that deep-links into the Containers tab.
+- **Disk usage widget**: a header row showing images/containers/volumes/total
+  on-disk usage (`container system df`), refreshed on the normal poll cadence.
+
+### Fixed
+
+- Container logs now reload when switching the selected container while the Logs
+  section is already expanded (previously the panel went blank until a manual
+  reload).
+
 ## [1.1.0] - 2026-06-24
 
 ### Added
@@ -60,6 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bounded the recursion depth of JSON traversal to guard against pathological or
   hostile CLI output.
 
-[Unreleased]: https://github.com/hurryingauto3/container-mb/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/hurryingauto3/container-mb/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/hurryingauto3/container-mb/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/hurryingauto3/container-mb/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/hurryingauto3/container-mb/releases/tag/v1.0.0
