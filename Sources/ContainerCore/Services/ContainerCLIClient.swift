@@ -26,6 +26,13 @@ public protocol ContainerCLIClient: Sendable {
     func listImages() async throws -> [ImageSummary]
     func diskUsage() async throws -> DiskUsage
     func systemState() async -> ContainerSystemState
+    /// Bounded, on-demand container log read. Returns the raw text output (newline-separated
+    /// lines). Never uses `--follow`; capped at `lines` (the CLI's `-n`).
+    func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String
+    /// Lazy, on-demand `volume inspect <name>`; returns the enriched summary or nil if absent.
+    func inspectVolume(name: String) async throws -> ResourceSummary?
+    /// Lazy, on-demand `network inspect <name>`; returns the enriched summary or nil if absent.
+    func inspectNetwork(name: String) async throws -> ResourceSummary?
 }
 
 public struct ProcessContainerCLIClient: ContainerCLIClient {
@@ -86,6 +93,27 @@ public struct ProcessContainerCLIClient: ContainerCLIClient {
         )
     }
 
+    public func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String {
+        var arguments = ["logs", "-n", String(lines), id]
+        if boot {
+            // Place `--boot` before the id: `logs --boot -n <n> <id>`.
+            arguments = ["logs", "--boot", "-n", String(lines), id]
+        }
+        return try await runText(arguments: arguments, timeout: max(timeout, 8))
+    }
+
+    public func inspectVolume(name: String) async throws -> ResourceSummary? {
+        try await ContainerJSONMapper.resources(
+            from: runJSON(arguments: ["volume", "inspect", name])
+        ).first
+    }
+
+    public func inspectNetwork(name: String) async throws -> ResourceSummary? {
+        try await ContainerJSONMapper.resources(
+            from: runJSON(arguments: ["network", "inspect", name])
+        ).first
+    }
+
     public func systemState() async -> ContainerSystemState {
         guard executableURL != nil else { return .unknown }
 
@@ -125,6 +153,25 @@ public struct ProcessContainerCLIClient: ContainerCLIClient {
             )
         }
         return result.stdout
+    }
+
+    // Mirrors `runJSON` but returns the raw stdout text instead of decoding JSON. Used for the
+    // `logs` subcommand, whose output is plain text.
+    private func runText(arguments: [String], timeout: TimeInterval? = nil) async throws -> String {
+        guard let executableURL else { throw ContainerCLIError.executableNotFound }
+        let result = try await runner.run(
+            executableURL: executableURL,
+            arguments: arguments,
+            timeout: timeout ?? self.timeout
+        )
+        guard result.exitCode == 0 else {
+            throw ContainerCLIError.commandFailed(
+                arguments: arguments,
+                exitCode: result.exitCode,
+                stderr: result.stderrString
+            )
+        }
+        return result.stdoutString
     }
 
     private func optionalRun(arguments: [String], timeout: TimeInterval) async -> CommandResult? {

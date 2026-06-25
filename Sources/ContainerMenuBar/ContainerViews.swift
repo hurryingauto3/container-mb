@@ -47,6 +47,7 @@ struct ContainerRowView: View {
 struct ContainerDetailView: View {
     let container: ContainerSummary?
     let stats: ContainerStatsSnapshot?
+    @ObservedObject var viewModel: DashboardViewModel
 
     var body: some View {
         Group {
@@ -62,6 +63,7 @@ struct ContainerDetailView: View {
                         listSection(title: "IP Addresses", values: container.ipAddresses)
                         listSection(title: "Mounts", values: container.mounts)
                         labelsSection(container)
+                        LogsSection(container: container, viewModel: viewModel)
                     }
                     .padding(14)
                 }
@@ -213,6 +215,100 @@ struct ContainerDetailView: View {
     }
 }
 
+// Collapsible, on-demand logs viewer. Bounded to 200 lines (no `--follow`); fetched lazily on
+// first expand and re-fetched when the `--boot` toggle changes.
+private struct LogsSection: View {
+    let container: ContainerSummary
+    @ObservedObject var viewModel: DashboardViewModel
+    @State private var expanded = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                content
+            }
+            .padding(.top, 6)
+        } label: {
+            SectionHeader(title: "Logs")
+        }
+        .onChange(of: expanded) { isExpanded in
+            if isExpanded, viewModel.containerLogs == nil, !viewModel.isLoadingLogs {
+                viewModel.loadLogs(for: container.id, boot: viewModel.logsShowBoot)
+            }
+        }
+        .onChange(of: viewModel.logsShowBoot) { _ in
+            if expanded {
+                viewModel.reloadLogs()
+            }
+        }
+        .onChange(of: container.id) { newID in
+            // The Logs disclosure keeps its `expanded` @State across container
+            // selections (same view identity), so switching containers while it
+            // is open must re-fetch — otherwise the panel shows the prior
+            // container's (now cleared) logs and never reloads on its own.
+            if expanded {
+                viewModel.loadLogs(for: newID, boot: viewModel.logsShowBoot)
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Toggle("--boot", isOn: $viewModel.logsShowBoot)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .font(.caption)
+            if viewModel.isLoadingLogs {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            Spacer()
+            Button {
+                viewModel.reloadLogs()
+            } label: {
+                Label("Reload", systemImage: "arrow.clockwise")
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            if let logs = viewModel.containerLogs, !logs.isEmpty {
+                CopyButton(title: "Copy all", value: logs)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if let error = viewModel.logsErrorMessage {
+            Text(error)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .textSelection(.enabled)
+        } else if let logs = viewModel.containerLogs {
+            if logs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text("No logs")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView([.vertical, .horizontal]) {
+                    Text(logs)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 220)
+                .background(Color(nsColor: .textBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+        } else if !viewModel.isLoadingLogs {
+            Text("No logs")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
 private struct SectionHeader: View {
     let title: String
 
@@ -260,11 +356,22 @@ private struct CopyButton: View {
     }
 }
 
+enum ResourceKind {
+    case volume
+    case network
+}
+
 struct ResourceListView: View {
     let resources: [ResourceSummary]
     let systemImage: String
     let emptyTitle: String
     let emptyDetail: String
+    let kind: ResourceKind
+    @ObservedObject var viewModel: DashboardViewModel
+
+    private var selectedID: String? {
+        kind == .volume ? viewModel.selectedVolumeID : viewModel.selectedNetworkID
+    }
 
     var body: some View {
         if resources.isEmpty {
@@ -273,11 +380,29 @@ struct ResourceListView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     ForEach(resources) { resource in
-                        ResourceCardView(resource: resource, systemImage: systemImage)
+                        ResourceCardView(
+                            resource: resource,
+                            systemImage: systemImage,
+                            kind: kind,
+                            selected: selectedID == resource.id,
+                            viewModel: viewModel
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            toggleSelection(resource.id)
+                        }
                     }
                 }
                 .padding(14)
             }
+        }
+    }
+
+    private func toggleSelection(_ id: String) {
+        let newValue: String? = (selectedID == id) ? nil : id
+        switch kind {
+        case .volume: viewModel.selectVolume(newValue)
+        case .network: viewModel.selectNetwork(newValue)
         }
     }
 }
@@ -285,19 +410,34 @@ struct ResourceListView: View {
 private struct ResourceCardView: View {
     let resource: ResourceSummary
     let systemImage: String
+    let kind: ResourceKind
+    let selected: Bool
+    @ObservedObject var viewModel: DashboardViewModel
+
+    // The enriched inspect result for this card when selected; falls back to the list-level
+    // attributes until inspect returns.
+    private var displayResource: ResourceSummary {
+        guard selected else { return resource }
+        let detail = kind == .volume ? viewModel.volumeDetail : viewModel.networkDetail
+        if let detail, detail.id == resource.id {
+            return detail
+        }
+        return resource
+    }
 
     var body: some View {
+        let display = displayResource
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
                     .foregroundStyle(.secondary)
-                Text(resource.name)
+                Text(display.name)
                     .font(.headline)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 8)
-                if resource.id != resource.name {
-                    Text(resource.id)
+                if display.id != display.name {
+                    Text(display.id)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -306,14 +446,14 @@ private struct ResourceCardView: View {
                 }
             }
 
-            if !resource.attributes.isEmpty {
+            if !display.attributes.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(resource.attributes) { attribute in
+                    ForEach(display.attributes) { attribute in
                         HStack(alignment: .top, spacing: 8) {
                             Text(attribute.label)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .frame(width: 72, alignment: .leading)
+                                .frame(width: 110, alignment: .leading)
                             Text(attribute.value)
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
@@ -321,17 +461,61 @@ private struct ResourceCardView: View {
                         }
                     }
                 }
-            } else if let detail = resource.detail {
+            } else if let detail = display.detail {
                 Text(detail)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            if selected, kind == .network {
+                attachedContainersSection
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(selected ? Color.accentColor.opacity(0.12) : Color(nsColor: .controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(selected ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 1)
+        )
+    }
+
+    @ViewBuilder
+    private var attachedContainersSection: some View {
+        let attached = viewModel.containers(attachedTo: resource.name)
+        Divider()
+        SectionHeader(title: "Attached containers")
+        if attached.isEmpty {
+            Text("--")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(attached) { container in
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(container.state.isRunning ? Color.green : Color.secondary)
+                        .frame(width: 7, height: 7)
+                    Text(container.shortID)
+                        .font(.system(.caption, design: .monospaced))
+                    Text(container.image)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    viewModel.selectedSection = .containers
+                    viewModel.select(containerID: container.id)
+                }
+            }
+        }
     }
 }
