@@ -40,6 +40,20 @@ public actor PollingCoordinator {
         cachedSnapshot
     }
 
+    // Lazy, user-driven passthroughs. These are intentionally NOT part of the poll loop: they fire
+    // only on selection/expand and keep the single client owner inside the actor.
+    public func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String {
+        try await client.containerLogs(id: id, lines: lines, boot: boot)
+    }
+
+    public func inspectVolume(name: String) async throws -> ResourceSummary? {
+        try await client.inspectVolume(name: name)
+    }
+
+    public func inspectNetwork(name: String) async throws -> ResourceSummary? {
+        try await client.inspectNetwork(name: name)
+    }
+
     public func refresh(mode: PollingMode, force: Bool = false) async -> ContainerDashboardSnapshot {
         if isRefreshing {
             return staleSnapshot(message: "Refresh already in progress")

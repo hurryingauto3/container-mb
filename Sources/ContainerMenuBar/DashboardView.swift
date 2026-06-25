@@ -105,14 +105,18 @@ struct DashboardView: View {
                     resources: viewModel.snapshot.volumes,
                     systemImage: "externaldrive",
                     emptyTitle: "No volumes",
-                    emptyDetail: "Create one with `container volume create <name>`."
+                    emptyDetail: "Create one with `container volume create <name>`.",
+                    kind: .volume,
+                    viewModel: viewModel
                 )
             case .networks:
                 ResourceListView(
                     resources: viewModel.snapshot.networks,
                     systemImage: "network",
                     emptyTitle: "No networks",
-                    emptyDetail: "Networks created by Apple container will appear here."
+                    emptyDetail: "Networks created by Apple container will appear here.",
+                    kind: .network,
+                    viewModel: viewModel
                 )
             }
         }
@@ -131,7 +135,8 @@ struct DashboardView: View {
                 Divider()
                 ContainerDetailView(
                     container: viewModel.selectedContainer,
-                    stats: viewModel.selectedContainer.flatMap { viewModel.snapshot.statsByID[$0.id] }
+                    stats: viewModel.selectedContainer.flatMap { viewModel.snapshot.statsByID[$0.id] },
+                    viewModel: viewModel
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

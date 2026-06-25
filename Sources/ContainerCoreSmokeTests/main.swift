@@ -27,6 +27,15 @@ enum SmokeTests {
         await suite.run("parses live network and volume detail") {
             try testParsesLiveResourceDetail()
         }
+        await suite.run("parses volume inspect detail") {
+            try testParsesVolumeInspectDetail()
+        }
+        await suite.run("parses network inspect detail") {
+            try testParsesNetworkInspectDetail()
+        }
+        await suite.run("coordinator logs/inspect passthrough") {
+            try await testCoordinatorLogsPassthrough()
+        }
         await suite.run("background refresh skips unchanged stats") {
             try await testBackgroundRefreshSkipsStatsWhenUnchanged()
         }
@@ -311,6 +320,112 @@ private func testParsesLiveResourceDetail() throws {
     )
 }
 
+// `volume inspect` adds source/labels/options/creationDate beyond the list shape. Asserts the
+// list-level attributes (Driver/Format/Size/Source) plus the inspect-only Created and Label entries.
+private func testParsesVolumeInspectDetail() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "testvol",
+            "configuration": {
+              "driver": "local",
+              "format": "ext4",
+              "name": "testvol",
+              "sizeInBytes": 549755813888,
+              "source": "/Users/me/Library/Application Support/com.apple.container/volumes/testvol/volume.img",
+              "creationDate": "2026-06-24T02:04:11Z",
+              "labels": { "env": "test", "app": "db" },
+              "options": {}
+            }
+          }
+        ]
+        """.utf8
+    )
+
+    let volumes = try ContainerJSONMapper.resources(from: data)
+    try expect(volumes.count == 1, "expected one volume")
+    let labels = volumes[0].attributes.map(\.label)
+    try expect(labels.contains("Driver"), "missing Driver: \(labels)")
+    try expect(labels.contains("Format"), "missing Format: \(labels)")
+    try expect(labels.contains("Size"), "missing Size: \(labels)")
+    try expect(labels.contains("Source"), "missing Source: \(labels)")
+    try expect(labels.contains("Created"), "missing Created: \(labels)")
+    // Labels are emitted one attribute per key, sorted: "app" before "env".
+    try expect(
+        volumes[0].attributes.contains(ResourceAttribute(label: "Label: app", value: "db")),
+        "missing Label: app: \(volumes[0].attributes)"
+    )
+    try expect(
+        volumes[0].attributes.contains(ResourceAttribute(label: "Label: env", value: "test")),
+        "missing Label: env: \(volumes[0].attributes)"
+    )
+    let appIndex = labels.firstIndex(of: "Label: app")
+    let envIndex = labels.firstIndex(of: "Label: env")
+    try expect((appIndex ?? 0) < (envIndex ?? 0), "label ordering not sorted: \(labels)")
+}
+
+// `network inspect` adds ipv6Subnet/labels/creationDate/options beyond the list shape. Asserts the
+// list-level attributes (Mode/Subnet/Gateway/Plugin) plus IPv6 Subnet and a Label entry.
+private func testParsesNetworkInspectDetail() throws {
+    let data = Data(
+        """
+        [
+          {
+            "id": "default",
+            "configuration": {
+              "mode": "nat",
+              "name": "default",
+              "plugin": "container-network-vmnet",
+              "creationDate": "2026-06-24T01:57:25Z",
+              "labels": { "com.apple.container.resource.role": "builtin" },
+              "options": {}
+            },
+            "status": {
+              "ipv4Gateway": "192.168.64.1",
+              "ipv4Subnet": "192.168.64.0/24",
+              "ipv6Subnet": "fd37:5540:3aa9:5b60::/64"
+            }
+          }
+        ]
+        """.utf8
+    )
+
+    let networks = try ContainerJSONMapper.resources(from: data)
+    try expect(networks.count == 1, "expected one network")
+    let labels = networks[0].attributes.map(\.label)
+    try expect(labels.contains("Mode"), "missing Mode: \(labels)")
+    try expect(labels.contains("Subnet"), "missing Subnet: \(labels)")
+    try expect(labels.contains("Gateway"), "missing Gateway: \(labels)")
+    try expect(labels.contains("Plugin"), "missing Plugin: \(labels)")
+    try expect(
+        networks[0].attributes.contains(ResourceAttribute(label: "IPv6 Subnet", value: "fd37:5540:3aa9:5b60::/64")),
+        "missing IPv6 Subnet: \(networks[0].attributes)"
+    )
+    try expect(labels.contains("Created"), "missing Created: \(labels)")
+    try expect(
+        networks[0].attributes.contains(
+            ResourceAttribute(label: "Label: com.apple.container.resource.role", value: "builtin")
+        ),
+        "missing builtin label: \(networks[0].attributes)"
+    )
+}
+
+private func testCoordinatorLogsPassthrough() async throws {
+    let client = MockContainerCLIClient()
+    let coordinator = PollingCoordinator(client: client)
+
+    let logs = try await coordinator.containerLogs(id: "abc", lines: 200, boot: false)
+    try expect(logs.contains("abc"), "logs should mention the container id: \(logs)")
+    try expect(logs.contains("n=200"), "logs should reflect the 200-line bound: \(logs)")
+
+    let boot = try await coordinator.containerLogs(id: "abc", lines: 200, boot: true)
+    try expect(boot.contains("crng init done"), "boot logs mismatch: \(boot)")
+
+    let volume = try await coordinator.inspectVolume(name: "testvol")
+    try expect(volume?.id == "testvol", "volume inspect passthrough mismatch")
+}
+
 private func testBackgroundRefreshSkipsStatsWhenUnchanged() async throws {
     let client = MockContainerCLIClient()
     let coordinator = PollingCoordinator(client: client)
@@ -381,6 +496,18 @@ private actor MockContainerCLIClient: ContainerCLIClient {
 
     func systemState() async -> ContainerSystemState {
         ContainerSystemState(installed: true, serviceRunning: true, version: "1.0.0")
+    }
+
+    func containerLogs(id: String, lines: Int, boot: Bool) async throws -> String {
+        boot ? "[    0.069837] random: crng init done" : "log line for \(id) (n=\(lines))"
+    }
+
+    func inspectVolume(name: String) async throws -> ResourceSummary? {
+        ResourceSummary(id: name, name: name, detail: "/volumes/\(name)/volume.img")
+    }
+
+    func inspectNetwork(name: String) async throws -> ResourceSummary? {
+        ResourceSummary(id: name, name: name, detail: "192.168.64.0/24")
     }
 
     func statsCallCount() -> Int {
